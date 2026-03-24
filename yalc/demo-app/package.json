@@ -1,0 +1,25 @@
+{
+  "name": "demo-app",
+  "version": "1.0.0",
+  "description": "Demo application that uses math-utils via yalc",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "tsc",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "demo",
+    "yalc"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@sample-yalc/math-utils": "file:.yalc/@sample-yalc/math-utils"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
