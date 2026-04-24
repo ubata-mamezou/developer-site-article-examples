@@ -1,0 +1,23 @@
+{
+  "name": "mcp-server_stdio",
+  "version": "1.0.0",
+  "description": "MCP Server stdio example implementation",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "server": "npm run build && node dist/index.js",
+    "client": "npx -y @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "typescript": "^6.0.3"
+  }
+}
