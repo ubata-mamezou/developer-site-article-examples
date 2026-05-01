@@ -9,21 +9,27 @@ const server = new McpServer({
 });
 
 // ツールの登録
+/*
+ * 基本的な動作確認を目的としたツール。
+ */
 server.registerTool(
   "hello",
   {
     title: "hello, world!",
-    inputSchema: { name: z.string().describe("メッセージに追加する名前") },
-    outputSchema: { message: z.string().describe("メッセージ") },
+    inputSchema: { name: z.string().describe("メッセージに追加する名前") }, // 入力スキーマの定義
+    outputSchema: { message: z.string().describe("メッセージ") }, // 出力スキーマの定義
   },
   async ({ name }) => {
     return {
-      content: [{ type: "text", text: `Hello, ${name}!` }],
-      structuredContent: { message: `Hello, ${name}!` },
+      content: [{ type: "text", text: `Hello, ${name}!` }], // デフォルトのレスポンス
+      structuredContent: { message: `Hello, ${name}!` }, // 出力スキーマに基づくレスポンス
     };
   },
 );
 
+/**
+ * デバッグログを出力した場合の挙動を確認するだけのツール
+ */
 server.registerTool(
   `output_log`,
   { title: 'output_log' },
