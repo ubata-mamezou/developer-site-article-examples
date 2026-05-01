@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { z } from "zod";
+import { json, z } from "zod";
 
 const MCP_PORT = Number(process.env.PORT ?? "3000");
 const DEFAULT_WEB_API_BASE_URL = "http://localhost:3001";
@@ -14,90 +14,202 @@ function createServer() {
   });
 
   // ツールの登録
-  server.registerTool(
-    "hello",
-    {
-      title: "hello, world!",
-      inputSchema: { name: z.string().describe("メッセージに追加する名前") },
-      outputSchema: { message: z.string().describe("メッセージ") },
-    },
-    async ({ name }) => {
-      return {
-        content: [{ type: "text", text: `Hello, ${name}!` }],
-        structuredContent: { message: `Hello, ${name}!` },
-      };
-    },
-  );
+  const baseUrl = `${process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL}/todos`;
 
   server.registerTool(
-    "output_log",
-    { title: "output_log" },
+    "health_check",
+    {
+      title: "health_check",
+      description: "Todo APIのヘルスチェックを行う",
+    },
     async () => {
-      console.log("debug log");
-      console.info("info log");
-      console.warn("warn log");
-      console.error("error log");
-      return { content: [{ type: "text", text: "output log tool" }] };
-    },
-  );
-
-  server.registerTool(
-    "fetch_web_api",
-    {
-      title: "fetch_web_api",
-      description: "外部WebAPIに接続してデータ取得を行う",
-      inputSchema: {
-        path: z.string().default("/todos/1").describe("WebAPIのパス。例: /todos/1"),
-      },
-      outputSchema: {
-        endpoint: z.string().describe("呼び出し先エンドポイント"),
-        status: z.number().describe("HTTPステータス"),
-        body: z.unknown().describe("レスポンスボディ"),
-      },
-    },
-    async ({ path }) => {
-      const baseUrl = process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL;
-      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-      const endpoint = `${baseUrl}${normalizedPath}`;
-
+      const endpoint = `${baseUrl}`;
       try {
         const response = await fetch(endpoint, {
           method: "GET",
-          signal: AbortSignal.timeout(10_000),
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
         const body = await response.json();
-        return {
-          content: [
-            {
-              type: "text",
-              text: `WebAPI call success: ${endpoint} (status: ${response.status})`,
-            },
-          ],
-          structuredContent: {
-            endpoint,
-            status: response.status,
-            body,
-          },
-        };
+        return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "unknown error";
-        return {
-          content: [
-            {
-              type: "text",
-              text: `WebAPI call failed: ${endpoint} (${message})`,
-            },
-          ],
-          structuredContent: {
-            endpoint,
-            status: 0,
-            body: { error: message },
-          },
-        };
+        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
       }
-    },
+
+    }
   );
+
+
+  server.registerTool(
+    "get_todo",
+    {
+      title: "get_todo",
+      description: "Todoを取得する",
+      inputSchema: {
+        id: z.number().describe("TodoのID"),
+      },
+    },
+    async ({ id }) => {
+      const endpoint = `${baseUrl}/${id}`;
+      try {
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const body = await response.json();
+        return { content: [{ type: "text", text: JSON.stringify(body) }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+      }
+
+    }
+  );
+
+  server.registerTool(
+    "list_todo",
+    {
+      title: "list_todo",
+      description: "Todoリストを取得する",
+    },
+    async () => {
+      const endpoint = `${baseUrl}`;
+      try {
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const body = await response.json();
+        return { content: [{ type: "text", text: JSON.stringify(body) }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+      }
+
+    }
+  );
+
+  server.registerTool(
+    "register_todo",
+    {
+      title: "register_todo",
+      description: "Todoを登録する",
+      inputSchema: {
+        title: z.string().describe("Todoのタイトル"),
+        source: z.string().describe("Todoの登録元"),
+      },
+    },
+    async ({ title, source }) => {
+      const endpoint = `${baseUrl}`;
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ title, source }),
+        });
+
+        const body = await response.json();
+        return { content: [{ type: "text", text: JSON.stringify(body) }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+      }
+
+    }
+  );
+
+  server.registerTool(
+    "done_todo",
+    {
+      title: "done_todo",
+      description: "Todoを完了にする",
+      inputSchema: {
+        id: z.number().describe("TodoのID"),
+      },
+    },
+    async ({ id }) => {
+      const endpoint = `${baseUrl}/${id}/done`;
+      try {
+        const response = await fetch(endpoint, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const body = await response.json();
+        return { content: [{ type: "text", text: JSON.stringify(body) }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+      }
+
+    }
+  );
+
+  // server.registerTool(
+  //   "fetch_web_api",
+  //   {
+  //     title: "fetch_web_api",
+  //     description: "外部WebAPIに接続してデータ取得を行う",
+  //     inputSchema: {
+  //       path: z.string().default("/todos/1").describe("WebAPIのパス。例: /todos/1"),
+  //     },
+  //     outputSchema: {
+  //       endpoint: z.string().describe("呼び出し先エンドポイント"),
+  //       status: z.number().describe("HTTPステータス"),
+  //       body: z.unknown().describe("レスポンスボディ"),
+  //     },
+  //   },
+  //   async ({ path }) => {
+  //     const baseUrl = process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL;
+  //     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  //     const endpoint = `${baseUrl}${normalizedPath}`;
+
+  //     try {
+  //       const response = await fetch(endpoint, {
+  //         method: "GET",
+  //         signal: AbortSignal.timeout(10_000),
+  //       });
+
+  //       const body = await response.json();
+  //       return {
+  //         content: [
+  //           {
+  //             type: "text",
+  //             text: `WebAPI call success: ${endpoint} (status: ${response.status})`,
+  //           },
+  //         ],
+  //         structuredContent: {
+  //           endpoint,
+  //           status: response.status,
+  //           body,
+  //         },
+  //       };
+  //     } catch (error) {
+  //       const message = error instanceof Error ? error.message : "unknown error";
+  //       return {
+  //         content: [
+  //           {
+  //             type: "text",
+  //             text: `WebAPI call failed: ${endpoint} (${message})`,
+  //           },
+  //         ],
+  //         structuredContent: {
+  //           endpoint,
+  //           status: 0,
+  //           body: { error: message },
+  //         },
+  //       };
+  //     }
+  //   },
+  // );
 
   return server;
 }
