@@ -2,9 +2,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { json, z } from "zod";
+import { id, th } from "zod/locales";
 
 const MCP_PORT = Number(process.env.PORT ?? "3000");
 const DEFAULT_WEB_API_BASE_URL = "http://localhost:3001";
+class ApplicationError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
 
 function createServer() {
   // サーバーのインスタンス化
@@ -31,7 +37,6 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
-
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
@@ -40,7 +45,6 @@ function createServer() {
 
     }
   );
-
 
   server.registerTool(
     "get_todo",
@@ -60,15 +64,54 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
-
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
         return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
       }
-
     }
   );
+
+  server.registerTool(
+    "get_todo_by_no",
+    {
+      title: "get_todo_by_no",
+      description: "Todoを取得する",
+      inputSchema: {
+        no: z.string().describe("Todoの番号"),
+      },
+    },
+    async ({ no }) => {
+      try {
+        return { content: [{ type: "text", text: JSON.stringify(await searchTodo(no)) }] };
+      } catch (error) {
+        return { content: [{ type: "text", text: error instanceof ApplicationError ? error.message : "An unexpected error occurred." }] };
+      }
+    }
+  );
+
+  const searchTodo = async (no: string) => {
+    const endpoint = `${baseUrl}/search`;
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ no }),
+      });
+      const bodies = await response.json();
+      if (bodies.length !== 1) {
+        throw new ApplicationError("指定された受注番号は見つかりませんでした。");
+      }
+      return bodies[0];
+    } catch (error) {
+      if (error instanceof ApplicationError) {
+        throw error;
+      }
+      throw new ApplicationError(`WebAPI call failed: ${endpoint}`);
+    }
+  };
 
   server.registerTool(
     "list_todo",
@@ -85,13 +128,11 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
-
-        const body = await response.json();
-        return { content: [{ type: "text", text: JSON.stringify(body) }] };
+        const bodies = await response.json();
+        return { content: [{ type: "text", text: JSON.stringify(bodies) }] };
       } catch (error) {
         return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
       }
-
     }
   );
 
@@ -115,7 +156,6 @@ function createServer() {
           },
           body: JSON.stringify({ title, source }),
         });
-
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
@@ -131,85 +171,27 @@ function createServer() {
       title: "done_todo",
       description: "Todoを完了にする",
       inputSchema: {
-        id: z.number().describe("TodoのID"),
+        no: z.string().describe("Todoの番号"),
       },
     },
-    async ({ id }) => {
-      const endpoint = `${baseUrl}/${id}/done`;
+    async ({ no }) => {
       try {
+        const targetTodo = await searchTodo(no);
+        const endpoint = `${baseUrl}/${targetTodo.id}/done`;
+        console.log(`Calling endpoint: ${endpoint}`);
         const response = await fetch(endpoint, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
         });
-
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+        return { content: [{ type: "text", text: error instanceof ApplicationError ? error.message : "An unexpected error occurred." }] };
       }
-
     }
   );
-
-  // server.registerTool(
-  //   "fetch_web_api",
-  //   {
-  //     title: "fetch_web_api",
-  //     description: "外部WebAPIに接続してデータ取得を行う",
-  //     inputSchema: {
-  //       path: z.string().default("/todos/1").describe("WebAPIのパス。例: /todos/1"),
-  //     },
-  //     outputSchema: {
-  //       endpoint: z.string().describe("呼び出し先エンドポイント"),
-  //       status: z.number().describe("HTTPステータス"),
-  //       body: z.unknown().describe("レスポンスボディ"),
-  //     },
-  //   },
-  //   async ({ path }) => {
-  //     const baseUrl = process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL;
-  //     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  //     const endpoint = `${baseUrl}${normalizedPath}`;
-
-  //     try {
-  //       const response = await fetch(endpoint, {
-  //         method: "GET",
-  //         signal: AbortSignal.timeout(10_000),
-  //       });
-
-  //       const body = await response.json();
-  //       return {
-  //         content: [
-  //           {
-  //             type: "text",
-  //             text: `WebAPI call success: ${endpoint} (status: ${response.status})`,
-  //           },
-  //         ],
-  //         structuredContent: {
-  //           endpoint,
-  //           status: response.status,
-  //           body,
-  //         },
-  //       };
-  //     } catch (error) {
-  //       const message = error instanceof Error ? error.message : "unknown error";
-  //       return {
-  //         content: [
-  //           {
-  //             type: "text",
-  //             text: `WebAPI call failed: ${endpoint} (${message})`,
-  //           },
-  //         ],
-  //         structuredContent: {
-  //           endpoint,
-  //           status: 0,
-  //           body: { error: message },
-  //         },
-  //       };
-  //     }
-  //   },
-  // );
 
   return server;
 }

@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { todo } from "node:test";
 
 const WEB_API_PORT = Number(process.env.WEB_API_PORT ?? "3001");
@@ -6,14 +6,26 @@ const WEB_API_PORT = Number(process.env.WEB_API_PORT ?? "3001");
 
 class Todo {
   id?: number;
+  no?: string;
 
-  constructor(private title: string, private completed: boolean = false, private source: string) { }
+  constructor(private title: string, private source: string, private completed: boolean = false) { }
+
+  generateId = () => Math.floor(Math.random() * 1000);
+
+  save(): Todo {
+    this.id = this.generateId();
+    this.no = `T-${this.id}`;
+    return this;
+  }
 
   done(): Todo {
     this.completed = true;
     return this;
   }
 }
+
+type CreateTodoRequest = Omit<Todo, "id" | "no">;
+type SearchTodoRequest = Pick<Todo, "no">;
 
 class CustomError extends Error {
   constructor(status: number, message: string) {
@@ -30,15 +42,14 @@ function boot() {
   });
 
   const todos: Todo[] = [];
-  const generateId = () => Math.floor(Math.random() * 1000);
-  const convertId = (id: string): number => Number(id);
+  const convertId = (id: string | number): number => Number(id);
   const getTodo = (id: number) => {
-    if (Number.isNaN(id)) return undefined;
     return todos.find((t) => t.id === id);
   };
 
-  sampleApi.get("/todos/:id", (req, res) => {
-    const todo = getTodo(Number(req.params.id));
+  // 1件取得
+  sampleApi.get("/todos/:id", (req: Request<{ id: number }>, res: Response) => {
+    const todo = getTodo(convertId(req.params.id));
     if (!todo) {
       res.status(404).json({ error: "Todo not found" });
       return;
@@ -46,22 +57,29 @@ function boot() {
     res.status(200).json(todo);
   });
 
-  sampleApi.get("/todos", (req, res) => {
+  // リスト取得
+  sampleApi.get("/todos", (req: Request, res: Response) => {
     res.status(200).json(todos);
   });
 
-  sampleApi.post("/todos", (req, res) => {
-    console.log("Request body:", req.body);
-    let todo = new Todo(req.body.title, false, req.body.source);
-    console.log("Created todo:", todo);
-    todo.id = generateId();
+  // noで検索
+  sampleApi.post("/todos/search", (req: Request<SearchTodoRequest>, res: Response) => {
+    const filteredTodos = todos.filter((t) => t.no === req.body.no);
+    res.status(200).json(filteredTodos);
+  });
+
+  // 登録
+  sampleApi.post("/todos", (req: Request<CreateTodoRequest>, res: Response) => {
+    const body = req.body;
+    let todo = new Todo(body.title, body.source).save();
     todos.push(todo);
 
     res.status(201).json(todo);
   });
 
-  sampleApi.put("/todos/:id/done", (req, res) => {
-    const todo = getTodo(Number(req.params.id));
+  // 完了
+  sampleApi.put("/todos/:id/done", (req: Request<{ id: number }>, res: Response) => {
+    const todo = getTodo(convertId(req.params.id));
     if (!todo) {
       res.status(404).json({ error: "Todo not found" });
       return;
