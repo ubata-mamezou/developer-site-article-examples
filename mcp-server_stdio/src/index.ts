@@ -34,10 +34,10 @@ server.registerTool(
   `output_log`,
   { title: 'output_log' },
   async () => {
-    console.log('debug log');
-    console.info('info log');
-    console.warn('warn log');
-    console.error('error log');
+    console.log('debug log'); // to stdout
+    console.info('info log'); // to stdout
+    console.warn('warn log'); // to stderr
+    console.error('error log'); // to stderr
     return { content: [{ type: "text", text: 'output log tool' }] };
   },
 );
@@ -46,7 +46,7 @@ server.registerTool(
 async function boot() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("MCP Hello World Server (Modern) running on stdio");
+  console.error("MCP Hello World Server (Modern) running on stdio"); // 標準出力にログを出力するとエラーになるため、`console.error`を使用しています
 }
 
 try {
