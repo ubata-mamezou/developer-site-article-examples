@@ -96,8 +96,8 @@ function boot() {
     console.log("Sample Web API Server running");
     console.log(`Sample Web API listening on http://localhost:${WEB_API_PORT}`);
     console.log(`Sample endpoint: http://localhost:${WEB_API_PORT}/todos`);
-    console.log(`Sample endpoint: http://localhost:${WEB_API_PORT}/todos/1`);
-    console.log(`Sample endpoint: http://localhost:${WEB_API_PORT}/todos/1/done`);
+    console.log(`Sample endpoint: http://localhost:${WEB_API_PORT}/todos/{todoId}`);
+    console.log(`Sample endpoint: http://localhost:${WEB_API_PORT}/todos/{todoId}/done`);
   });
 }
 

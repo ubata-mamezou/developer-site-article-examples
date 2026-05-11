@@ -200,7 +200,9 @@ const app = createMcpExpressApp();
 
 // Streamable HTTP の設定と起動
 async function boot() {
+  console.log('サーバー起動時に実行');
   app.post("/mcp", async (req, res) => {
+    console.log('POSTリクエストごとに実行');
     const server = createServer();
 
     try {
