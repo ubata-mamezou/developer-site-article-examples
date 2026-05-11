@@ -13,7 +13,7 @@ class ApplicationError extends Error {
 }
 
 function createServer() {
-  // サーバーのインスタンス化
+  // サーバーインスタンスの生成
   const server = new McpServer({
     name: "hello-world-server",
     version: "1.0.0",
@@ -29,14 +29,9 @@ function createServer() {
       description: "Todo APIのヘルスチェックを行う",
     },
     async () => {
-      const endpoint = `${baseUrl}`;
+      const endpoint = `${baseUrl}/health`;
       try {
-        const response = await fetch(endpoint, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(endpoint, {method: "GET", headers: {"Content-Type": "application/json"}});
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
@@ -198,17 +193,14 @@ function createServer() {
 
 const app = createMcpExpressApp();
 
-// Streamable HTTP の設定と起動
+// 起動処理
 async function boot() {
-  console.log('サーバー起動時に実行');
-  app.post("/mcp", async (req, res) => {
-    console.log('POSTリクエストごとに実行');
+  // POSTリクエストを受け付けるエンドポイント
+  app.post("/mcp", async (req, res) => { 
     const server = createServer();
 
     try {
-      // Stateless mode: セッションIDを使わず 1リクエスト単位で処理
-      const transport = new StreamableHTTPServerTransport();
-
+      const transport = new StreamableHTTPServerTransport(); // トランスポート設定
       await server.connect(transport as Parameters<typeof server.connect>[0]);
       await transport.handleRequest(req, res, req.body);
 
@@ -218,54 +210,30 @@ async function boot() {
       });
     } catch (error) {
       console.error("Error handling MCP request:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
-          id: null,
-        });
-      }
+      if (!res.headersSent) res.status(500).json({jsonrpc: "2.0", error: {code: -32603, message: "Internal server error"}, id: null});
     }
   });
 
-  app.get("/mcp", (_req, res) => {
-    res.writeHead(405).end(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Method not allowed.",
-        },
-        id: null,
-      }),
-    );
+  // GETリクエストを抑止
+  app.get("/mcp", (_req, res) => { 
+    res.writeHead(405).end(JSON.stringify({jsonrpc: "2.0", error: {code: -32000, message: "Method not allowed."}, id: null}));
   });
 
+  // DELETEリクエストを抑止
   app.delete("/mcp", (_req, res) => {
-    res.writeHead(405).end(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Method not allowed.",
-        },
-        id: null,
-      }),
-    );
+    res.writeHead(405).end(JSON.stringify({jsonrpc: "2.0", error: {code: -32000, message: "Method not allowed."}, id: null}));
   });
 
+  // ポートにバインド
   app.listen(MCP_PORT, (error?: Error) => {
     if (error) {
       console.error("Failed to start server:", error);
       process.exit(1);
     }
 
-    console.error("MCP Hello World Server (Streamable HTTP) running");
-    console.error(`MCP Server listening on http://localhost:${MCP_PORT}`);
-    console.error(`MCP endpoint: http://localhost:${MCP_PORT}/mcp`);
+    console.log("MCP Hello World Server (Streamable HTTP) running");
+    console.log(`MCP Server listening on http://localhost:${MCP_PORT}`);
+    console.log(`MCP endpoint: http://localhost:${MCP_PORT}/mcp`);
   });
 }
 
