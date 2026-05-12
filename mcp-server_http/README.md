@@ -2,7 +2,7 @@
 
 このプロジェクトは、HTTP（Streamable HTTP）トランスポートを使用したMCPサーバーの実装例です。
 
-特に、**ローカル完結でWebAPI接続を体験できること**を重視したサンプルです。
+とくに**ローカル完結でWebAPI接続を体験できること**を重視したサンプルです。
 
 構成は次の通りです。
 
@@ -10,12 +10,12 @@
 - MCP Server: `http://localhost:3000/mcp`
 - サンプルWebAPI Server: `http://localhost:3001`
 
-サンプルWebAPI Server は、MCP Server と分離した独立サンプルとして提供しています。
+サンプルWebAPI Serverは、MCP Serverと分離した独立サンプルとして提供しています。
 
 ## 必要な環境
 
-- Node.js 22.x 以上
-- npm 11.x 以上
+- Node.js 22.x+
+- npm 11.x+
 
 ## セットアップ
 
@@ -27,13 +27,13 @@ npm install
 
 ### サーバーの起動
 
-1. ターミナル1: サンプルWebAPI Server を起動
+1. ターミナル1: サンプルWebAPI Serverを起動
 
 ```bash
 npm run sample-api
 ```
 
-2. ターミナル2: MCP Server を起動
+2. ターミナル2: MCP Serverを起動
 
 ```bash
 npm run server
@@ -46,7 +46,7 @@ Sample Web API server listening on http://localhost:3001
 Sample Web API endpoint: http://localhost:3001/todos/1
 ```
 
-MCP Server 起動時の表示：
+MCP Server起動時の表示：
 
 ```
 MCP Hello World Server (Streamable HTTP) running
@@ -62,7 +62,7 @@ MCP endpoint: http://localhost:3000/mcp
 npm run client
 ```
 
-MCP Inspector が自動的にサーバーに接続し、ブラウザが開きます。
+MCP Inspectorが自動的にサーバーに接続し、ブラウザが開きます。
 
 ## ツール
 
@@ -70,7 +70,7 @@ MCP Inspector が自動的にサーバーに接続し、ブラウザが開きま
 
 名前を受け取って、ウェルカムメッセージを返すツール
 
-**パラメータ：**
+**パラメーター：**
 - `name` (string): メッセージに追加する名前
 
 **戻り値：**
@@ -90,7 +90,7 @@ MCP Inspector が自動的にサーバーに接続し、ブラウザが開きま
 
 ### `output_log`
 
-ログ出力をデモンストレーションするツール（stdout/stderr の違いを確認）
+ログ出力をデモンストレーションするツール（stdout/stderrの違いを確認）
 
 **戻り値：**
 ```json
@@ -108,11 +108,11 @@ MCP Inspector が自動的にサーバーに接続し、ブラウザが開きま
 
 サンプルWebAPI（ローカル）へ接続し、レスポンスを取得するツール
 
-**パラメータ：**
+**パラメーター：**
 - `path` (string): WebAPIのパス（例: `/todos/1`）
 
 **動作：**
-- `WEB_API_BASE_URL` と `path` を結合して GET リクエストを送信
+- `WEB_API_BASE_URL` と `path` を結合してGETリクエストを送信
 - 取得結果を `structuredContent` で返却
 - デフォルト接続先は `http://localhost:3001`
 
@@ -133,7 +133,7 @@ MCP Inspector が自動的にサーバーに接続し、ブラウザが開きま
 
 ## HTTP Streamable プロトコル
 
-このサーバーは HTTP Streamable トランスポートで通信します：
+このサーバーはHTTP Streamableトランスポートで通信します：
 
 - **エンドポイント**: `http://localhost:3000/mcp`
 - **プロトコル**: Streamable HTTP（HTTP POSTベース）
@@ -192,12 +192,12 @@ curl -X POST http://localhost:3000/mcp \
 npm run build
 ```
 
-TypeScript は `dist/` ディレクトリにコンパイルされます。
+TypeScriptは `dist/` ディレクトリにコンパイルされます。
 
 ## 環境変数
 
-- `PORT`: MCP Server のポート番号（デフォルト: 3000）
-- `WEB_API_PORT`: サンプルWebAPI Server のポート番号（デフォルト: 3001）
+- `PORT`: MCP Serverのポート番号（デフォルト: 3000）
+- `WEB_API_PORT`: サンプルWebAPI Serverのポート番号（デフォルト: 3001）
 - `WEB_API_BASE_URL`: `fetch_web_api` の接続先ベースURL（デフォルト: `http://localhost:3001`）
 
 ```bash
@@ -213,13 +213,13 @@ WEB_API_PORT=4001 WEB_API_BASE_URL=http://localhost:4001 npm run server
 - `src/index.ts`: MCP Server（3000）の実装
   - `McpServer` インスタンスの作成
   - ツール（`hello`, `output_log`, `fetch_web_api`）の登録
-  - `StreamableHTTPServerTransport` を使用した MCP Server（3000）の起動
+  - `StreamableHTTPServerTransport` を使用したMCP Server（3000）の起動
 - `src/sample-web-api.ts`: サンプルWebAPI Server（3001）の実装
   - `GET /health`
   - `GET /todos/:id`
 
 ## 注意事項
 
-- HTTP Streamable トランスポートは、MCP Inspector など標準クライアントで自動的に処理されます
+- HTTP Streamableトランスポートは、MCP Inspectorなど標準クライアントで自動的に処理されます
 - 手動でクライアントを実装する場合は、MCP仕様のJSON-RPCリクエスト/レスポンスをHTTPで扱う必要があります
 - `.npmrc` はこのディレクトリの設定（`min-release-age`, `ignore-scripts` など）をそのまま踏襲しています
