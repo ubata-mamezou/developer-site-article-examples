@@ -1,21 +1,18 @@
 # MCP Server HTTP (Streamable) Example
 
-このプロジェクトは、HTTP（Streamable HTTP）トランスポートを使用したMCPサーバーの実装例です。
+このフォルダーは、Streamable HTTPを使ったMCPサーバー実装例です。
+ローカルのサンプルWeb APIと接続して、MCPツール経由でTodo操作を行う構成になっています。
 
-とくに**ローカル完結でWebAPI接続を体験できること**を重視したサンプルです。
-
-構成は次の通りです。
+## 構成
 
 - MCP Inspector
-- MCP Server: `http://localhost:3000/mcp`
-- サンプルWebAPI Server: `http://localhost:3001`
-
-サンプルWebAPI Serverは、MCP Serverと分離した独立サンプルとして提供しています。
+- MCP Server: http://localhost:3000/mcp
+- Sample Web API Server: http://localhost:3001
 
 ## 必要な環境
 
-- Node.js 22.x+
-- npm 11.x+
+- Node.js 22.x以上
+- npm 11.x以上
 
 ## セットアップ
 
@@ -23,125 +20,91 @@
 npm install
 ```
 
-## 実行方法
+## 利用可能スクリプト
 
-### サーバーの起動
+```bash
+npm run build
+npm run server
+npm run server_stateless
+npm run server_stateful
+npm run sample-api
+npm run client
+```
 
-1. ターミナル1: サンプルWebAPI Serverを起動
+## 起動手順
+
+1. ターミナル1で Sample Web API を起動
 
 ```bash
 npm run sample-api
 ```
 
-2. ターミナル2: MCP Serverを起動
+2. ターミナル2で MCP Server を起動（通常は `server`）
 
 ```bash
 npm run server
 ```
 
-サンプルWebAPI起動時の表示：
+補足: 比較用に最小サンプルを起動する場合
 
-```
-Sample Web API server listening on http://localhost:3001
-Sample Web API endpoint: http://localhost:3001/todos/1
-```
+```bash
+# Stateless 最小例
+npm run server_stateless
 
-MCP Server起動時の表示：
-
-```
-MCP Hello World Server (Streamable HTTP) running
-MCP Server listening on http://localhost:3000
-MCP endpoint: http://localhost:3000/mcp
+# Stateful 最小例
+npm run server_stateful
 ```
 
-### クライアント（MCP Inspector）での接続
-
-別のターミナルで以下を実行：
+3. 必要に応じて MCP Inspector を起動
 
 ```bash
 npm run client
 ```
 
-MCP Inspectorが自動的にサーバーに接続し、ブラウザが開きます。
+## 実装ファイル
 
-## ツール
+- src/index.ts
+  - メイン実装
+  - 複数 Todo ツールを公開
+- src/index.stateless.ts
+  - Stateless 実装の最小例
+- src/index.stateful.ts
+  - Stateful 実装の最小例
+- src/sample-web-api.ts
+  - ローカルの Todo API
+- src/transport.util.ts
+  - `McpServer.connect()` の型不一致回避用ユーティリティ
 
-### `hello`
+## サーバー実装の使い分け
 
-名前を受け取って、ウェルカムメッセージを返すツール
+- `npm run server`
+  - メイン実装（Todo操作ツール一式）
+- `npm run server_stateless`
+  - Stateless の最小実装例
+- `npm run server_stateful`
+  - Stateful の最小実装例
 
-**パラメーター：**
-- `name` (string): メッセージに追加する名前
+## src/index.ts で公開しているツール
 
-**戻り値：**
-```json
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "Hello, {name}!"
-    }
-  ],
-  "structuredContent": {
-    "message": "Hello, {name}!"
-  }
-}
-```
+- health_check
+- get_todo
+- get_todo_by_no
+- list_todo
+- register_todo
+- done_todo
 
-### `output_log`
+## Sample Web API エンドポイント
 
-ログ出力をデモンストレーションするツール（stdout/stderrの違いを確認）
+- GET /health
+- GET /todos
+- GET /todos/:id
+- POST /todos
+- POST /todos/search
+- PUT /todos/:id/done
 
-**戻り値：**
-```json
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "output log tool"
-    }
-  ]
-}
-```
+## HTTP リクエスト例
 
-### `fetch_web_api`
-
-サンプルWebAPI（ローカル）へ接続し、レスポンスを取得するツール
-
-**パラメーター：**
-- `path` (string): WebAPIのパス（例: `/todos/1`）
-
-**動作：**
-- `WEB_API_BASE_URL` と `path` を結合してGETリクエストを送信
-- 取得結果を `structuredContent` で返却
-- デフォルト接続先は `http://localhost:3001`
-
-**呼び出し例（tools/call）：**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "fetch_web_api",
-    "arguments": {
-      "path": "/todos/1"
-    }
-  }
-}
-```
-
-## HTTP Streamable プロトコル
-
-このサーバーはHTTP Streamableトランスポートで通信します：
-
-- **エンドポイント**: `http://localhost:3000/mcp`
-- **プロトコル**: Streamable HTTP（HTTP POSTベース）
-- **用途の中心**: MCPツール経由でローカルWebAPIへ接続し、結果をLLM/クライアントへ返却
-
-### HTTP クライアントからのアクセス例
-
-#### 1. ツール一覧取得（POST リクエスト）
+tools/list:
 
 ```bash
 curl -X POST http://localhost:3000/mcp \
@@ -154,7 +117,7 @@ curl -X POST http://localhost:3000/mcp \
   }'
 ```
 
-#### 2. ツール実行（POST リクエスト）
+get_todo の呼び出し:
 
 ```bash
 curl -X POST http://localhost:3000/mcp \
@@ -164,62 +127,26 @@ curl -X POST http://localhost:3000/mcp \
     "id": 2,
     "method": "tools/call",
     "params": {
-      "name": "hello",
-      "arguments": { "name": "World" }
+      "name": "get_todo",
+      "arguments": { "id": 1 }
     }
   }'
 ```
-
-#### 3. WebAPI接続ツール実行（POST リクエスト）
-
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 3,
-    "method": "tools/call",
-    "params": {
-      "name": "fetch_web_api",
-      "arguments": { "path": "/todos/1" }
-    }
-  }'
-```
-
-## ビルド
-
-```bash
-npm run build
-```
-
-TypeScriptは `dist/` ディレクトリにコンパイルされます。
 
 ## 環境変数
 
-- `PORT`: MCP Serverのポート番号（デフォルト: 3000）
-- `WEB_API_PORT`: サンプルWebAPI Serverのポート番号（デフォルト: 3001）
-- `WEB_API_BASE_URL`: `fetch_web_api` の接続先ベースURL（デフォルト: `http://localhost:3001`）
+- PORT
+  - MCP Server のポート
+  - デフォルト: 3000
+- WEB_API_PORT
+  - Sample Web API のポート
+  - デフォルト: 3001
+- WEB_API_BASE_URL
+  - MCP Server から見た接続先 Web API のベース URL
+  - デフォルト: http://localhost:3001
 
-```bash
-PORT=8080 npm run server
-```
+## 補足
 
-```bash
-WEB_API_PORT=4001 WEB_API_BASE_URL=http://localhost:4001 npm run server
-```
-
-## コード構成
-
-- `src/index.ts`: MCP Server（3000）の実装
-  - `McpServer` インスタンスの作成
-  - ツール（`hello`, `output_log`, `fetch_web_api`）の登録
-  - `StreamableHTTPServerTransport` を使用したMCP Server（3000）の起動
-- `src/sample-web-api.ts`: サンプルWebAPI Server（3001）の実装
-  - `GET /health`
-  - `GET /todos/:id`
-
-## 注意事項
-
-- HTTP Streamableトランスポートは、MCP Inspectorなど標準クライアントで自動的に処理されます
-- 手動でクライアントを実装する場合は、MCP仕様のJSON-RPCリクエスト/レスポンスをHTTPで扱う必要があります
-- `.npmrc` はこのディレクトリの設定（`min-release-age`, `ignore-scripts` など）をそのまま踏襲しています
+- GET /mcp と DELETE /mcp は 405 を返します
+- MCP の受け口は POST /mcp です
+- このディレクトリの .npmrc 設定を前提にしています
