@@ -3,7 +3,9 @@
 ## 構成
 * mcp-server_http
   * MCPサーバー（StreamableHTTP）のサンプルコード
-  * 関連記事: AIエージェントとシステムをつなぐMCP入門（StreamableHTTP実装編）
+  * 関連記事
+    * [AIエージェントとシステムをつなぐMCP入門（StreamableHTTPステートレス実装編）](https://developer.mamezou-tech.com/blogs/2026/05/22/mcp-impl_http_stateless/)
+    * AIエージェントとシステムをつなぐMCP入門（StreamableHTTPステートフル実装編）
 * mcp-server_stdio
   * MCPサーバー（stdio）のサンプルコード
   * 関連記事: [AIエージェントとシステムをつなぐMCP入門（stdio実装編）](https://developer.mamezou-tech.com/blogs/2026/05/08/mcp-impl_stdio/)

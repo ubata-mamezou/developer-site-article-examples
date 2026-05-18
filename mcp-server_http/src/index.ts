@@ -4,15 +4,12 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { json, z } from "zod";
 import { id, th } from "zod/locales";
 import { refineTransport } from "./transport.util.js";
+import { ApplicationError } from "./application.error.js";
 
 const MCP_PORT = Number(process.env.PORT ?? "3000");
 const DEFAULT_WEB_API_BASE_URL = "http://localhost:3001";
-class ApplicationError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
 const BASE_URL = `${process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL}/todos`;
+const WEB_API_CALL_FAILED_MESSAGE = "WebAPI call failed";
 
 function createServer() {
   // サーバーインスタンスの生成
@@ -32,10 +29,12 @@ function createServer() {
       const endpoint = `${BASE_URL}/health`;
       try {
         const response = await fetch(endpoint, {method: "GET", headers: {"Content-Type": "application/json"}});
+        if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
 
     }
@@ -59,10 +58,12 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
+        if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
     }
   );
@@ -80,7 +81,8 @@ function createServer() {
       try {
         return { content: [{ type: "text", text: JSON.stringify(await searchTodo(no)) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: error instanceof ApplicationError ? error.message : "An unexpected error occurred." }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
     }
   );
@@ -95,16 +97,15 @@ function createServer() {
         },
         body: JSON.stringify({ no }),
       });
+      if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
       const bodies = await response.json();
       if (bodies.length !== 1) {
         throw new ApplicationError("指定された受注番号は見つかりませんでした。");
       }
       return bodies[0];
     } catch (error) {
-      if (error instanceof ApplicationError) {
-        throw error;
-      }
-      throw new ApplicationError(`WebAPI call failed: ${endpoint}`);
+      const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+      throw new ApplicationError(message);
     }
   };
 
@@ -123,10 +124,12 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
+        if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
         const bodies = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(bodies) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
     }
   );
@@ -151,10 +154,12 @@ function createServer() {
           },
           body: JSON.stringify({ title, source }),
         });
+        if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: `WebAPI call failed: ${endpoint}` }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
 
     }
@@ -180,10 +185,12 @@ function createServer() {
             "Content-Type": "application/json",
           },
         });
+        if (!response.ok) throw new ApplicationError(`${WEB_API_CALL_FAILED_MESSAGE} with status ${response.status}: ${endpoint}`);
         const body = await response.json();
         return { content: [{ type: "text", text: JSON.stringify(body) }] };
       } catch (error) {
-        return { content: [{ type: "text", text: error instanceof ApplicationError ? error.message : "An unexpected error occurred." }] };
+        const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
+        throw new ApplicationError(message);
       }
     }
   );
