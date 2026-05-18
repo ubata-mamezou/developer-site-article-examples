@@ -7,6 +7,8 @@
   "scripts": {
     "build": "tsc",
     "server": "npm run build && node dist/index.js",
+    "server_stateless": "npm run build && node dist/index.stateless.js",
+    "server_stateful": "npm run build && node dist/index.stateful.js",
     "sample-api": "npm run build && node dist/sample-web-api.js",
     "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp"
   },

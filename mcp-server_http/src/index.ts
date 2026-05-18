@@ -3,6 +3,7 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { json, z } from "zod";
 import { id, th } from "zod/locales";
+import { refineTransport } from "./transport.util.js";
 
 const MCP_PORT = Number(process.env.PORT ?? "3000");
 const DEFAULT_WEB_API_BASE_URL = "http://localhost:3001";
@@ -11,6 +12,7 @@ class ApplicationError extends Error {
     super(message);
   }
 }
+const BASE_URL = `${process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL}/todos`;
 
 function createServer() {
   // サーバーインスタンスの生成
@@ -20,8 +22,6 @@ function createServer() {
   });
 
   // ツールの登録
-  const baseUrl = `${process.env.WEB_API_BASE_URL ?? DEFAULT_WEB_API_BASE_URL}/todos`;
-
   server.registerTool(
     "health_check",
     {
@@ -29,7 +29,7 @@ function createServer() {
       description: "Todo APIのヘルスチェックを行う",
     },
     async () => {
-      const endpoint = `${baseUrl}/health`;
+      const endpoint = `${BASE_URL}/health`;
       try {
         const response = await fetch(endpoint, {method: "GET", headers: {"Content-Type": "application/json"}});
         const body = await response.json();
@@ -51,7 +51,7 @@ function createServer() {
       },
     },
     async ({ id }) => {
-      const endpoint = `${baseUrl}/${id}`;
+      const endpoint = `${BASE_URL}/${id}`;
       try {
         const response = await fetch(endpoint, {
           method: "GET",
@@ -86,7 +86,7 @@ function createServer() {
   );
 
   const searchTodo = async (no: string) => {
-    const endpoint = `${baseUrl}/search`;
+    const endpoint = `${BASE_URL}/search`;
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -115,7 +115,7 @@ function createServer() {
       description: "Todoリストを取得する",
     },
     async () => {
-      const endpoint = `${baseUrl}`;
+      const endpoint = `${BASE_URL}`;
       try {
         const response = await fetch(endpoint, {
           method: "GET",
@@ -142,7 +142,7 @@ function createServer() {
       },
     },
     async ({ title, source }) => {
-      const endpoint = `${baseUrl}`;
+      const endpoint = `${BASE_URL}`;
       try {
         const response = await fetch(endpoint, {
           method: "POST",
@@ -172,7 +172,7 @@ function createServer() {
     async ({ no }) => {
       try {
         const targetTodo = await searchTodo(no);
-        const endpoint = `${baseUrl}/${targetTodo.id}/done`;
+        const endpoint = `${BASE_URL}/${targetTodo.id}/done`;
         console.log(`Calling endpoint: ${endpoint}`);
         const response = await fetch(endpoint, {
           method: "PUT",
@@ -201,7 +201,7 @@ async function boot() {
 
     try {
       const transport = new StreamableHTTPServerTransport(); // トランスポート設定
-      await server.connect(transport as Parameters<typeof server.connect>[0]);
+      await server.connect(refineTransport(server, transport));
       await transport.handleRequest(req, res, req.body);
 
       res.on("close", () => {
