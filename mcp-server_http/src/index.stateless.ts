@@ -58,7 +58,8 @@ async function boot() {
     const transport = new StreamableHTTPServerTransport();
 
     try {
-      await server.connect(refineTransport(server, transport)); // 1
+       // 1: 下記コラム参照
+      await server.connect(refineTransport(server, transport));
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error("Error handling MCP request:", error);
