@@ -9,6 +9,7 @@ import { ApplicationError } from "./application.error.js";
 const PORT = Number(process.env.PORT ?? "3000");
 const WEB_API_BASE_URL = process.env.WEB_API_BASE_URL ?? "http://localhost:3001";
 const WEB_API_CALL_FAILED_MESSAGE = "WebAPI call failed";
+const sessionCounters = new Map<string, number>();
 
 function createServer() {
   // サーバーインスタンスの生成
@@ -42,6 +43,29 @@ function createServer() {
         const message = error instanceof ApplicationError ? error.message : WEB_API_CALL_FAILED_MESSAGE;
         return { content: [{ type: "text", text: message }] };
       }
+    },
+  );
+
+  server.registerTool(
+    "counter",
+    {
+      title: "counter",
+      description: "セッションごとのカウンターを1増やす",
+    },
+    async () => {
+      const sessionId = transport.sessionId;
+
+      if (!sessionId) {
+        return { content: [{ type: "text", text: "session id is not available" }] };
+      }
+
+      const nextCount = (sessionCounters.get(sessionId) ?? 0) + 1;
+      sessionCounters.set(sessionId, nextCount);
+
+      return {
+        content: [{ type: "text", text: `session=${sessionId}, count=${nextCount}` }],
+        structuredContent: { sessionId, count: nextCount },
+      };
     },
   );
 
