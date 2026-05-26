@@ -11,11 +11,13 @@ const WEB_API_BASE_URL = process.env.WEB_API_BASE_URL ?? "http://localhost:3001"
 const WEB_API_CALL_FAILED_MESSAGE = "WebAPI call failed";
 
 function createServer() {
+  // サーバーインスタンスの生成
   const server = new McpServer({
     name: "todo-mcp-stateful",
     version: "1.0.0",
   });
 
+  // ツールの登録
   server.registerTool(
     "get_todo",
     {
@@ -52,6 +54,7 @@ const transport = new StreamableHTTPServerTransport({
   sessionIdGenerator: () => randomUUID(),
 });
 
+// 起動処理
 async function boot() {
   await server.connect(refineTransport(server, transport));
 
