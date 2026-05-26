@@ -29,6 +29,7 @@ npm run server_stateless
 npm run server_stateful
 npm run sample-api
 npm run client
+npm run verify_stateful_counter
 ```
 
 ## 起動手順
@@ -61,6 +62,19 @@ npm run server_stateful
 npm run client
 ```
 
+4. Statefulのセッション分離を確認（追加インストール不要）
+
+```bash
+npm run verify_stateful_counter
+```
+
+`counter` ツールを2つのセッションで呼び出し、以下を確認します。
+
+- セッションA: count=1, count=2
+- セッションB: count=1, count=2, count=3
+
+セッションごとにカウンターが独立していれば、Statefulとして状態を分離管理できています。
+
 ## 実装ファイル
 
 - src/index.ts
@@ -74,6 +88,8 @@ npm run client
   - ローカルの Todo API
 - src/transport.util.ts
   - `McpServer.connect()` の型不一致回避用ユーティリティ
+- tools/verify-stateful-counter.ps1
+  - Statefulのセッション分離確認スクリプト（PowerShell）
 
 ## サーバー実装の使い分け
 

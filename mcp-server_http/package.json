@@ -11,7 +11,7 @@
     "server_stateful": "npm run build && node dist/index.stateful.js",
     "sample-api": "npm run build && node dist/sample-web-api.js",
     "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp",
-    "client2": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp --port 6275"
+    "verify_stateful_counter": "npm run build && powershell -ExecutionPolicy Bypass -File ./tools/verify-stateful-counter.ps1"
   },
   "keywords": [],
   "author": "",
