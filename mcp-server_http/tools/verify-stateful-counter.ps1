@@ -1,9 +1,13 @@
 param(
-  [string]$Endpoint = "http://localhost:3000/mcp"
+  [string]$Endpoint = "http://127.0.0.1:3000/mcp"
 )
 
 $ErrorActionPreference = "Stop"
+$mcpHeaders = @{
+  "Accept" = "application/json, text/event-stream"
+}
 
+# initialize -> notifications/initialized まで実行して、新しいセッションIDを取得する
 function New-McpSession {
   param(
     [string]$ClientName,
@@ -24,7 +28,7 @@ function New-McpSession {
     }
   } | ConvertTo-Json -Depth 10
 
-  $initializeResponse = Invoke-WebRequest -Method Post -Uri $Endpoint -ContentType "application/json" -Body $initializeBody
+  $initializeResponse = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $Endpoint -ContentType "application/json" -Headers $mcpHeaders -Body $initializeBody
 
   $sessionId = $initializeResponse.Headers["MCP-Session-Id"]
   if (-not $sessionId) {
@@ -41,13 +45,38 @@ function New-McpSession {
     params = @{}
   } | ConvertTo-Json -Depth 10
 
-  Invoke-WebRequest -Method Post -Uri $Endpoint -ContentType "application/json" -Headers @{
+  $initializedHeaders = @{
+    "Accept" = "application/json, text/event-stream"
     "MCP-Session-Id" = $sessionId
-  } -Body $initializedBody | Out-Null
+  }
+
+  Invoke-WebRequest -UseBasicParsing -Method Post -Uri $Endpoint -ContentType "application/json" -Headers $initializedHeaders -Body $initializedBody | Out-Null
 
   return $sessionId
 }
 
+# MCPレスポンスをJSONオブジェクトへ変換する（JSON直返し / SSE(data:) の両方に対応）
+function Convert-McpResponse {
+  param(
+    [string]$RawContent
+  )
+
+  $trimmed = $RawContent.Trim()
+
+  if ($trimmed.StartsWith("{")) {
+    return ($trimmed | ConvertFrom-Json)
+  }
+
+  $dataIndex = $RawContent.IndexOf("data:")
+  if ($dataIndex -lt 0) {
+    throw "Could not parse MCP response as JSON or SSE data lines."
+  }
+
+  $candidate = $RawContent.Substring($dataIndex + 5).Trim()
+  return ($candidate | ConvertFrom-Json)
+}
+
+# counterツールを呼び出し、レスポンスをオブジェクトで返す
 function Invoke-Counter {
   param(
     [string]$SessionId,
@@ -64,15 +93,33 @@ function Invoke-Counter {
     }
   } | ConvertTo-Json -Depth 10
 
-  $response = Invoke-WebRequest -Method Post -Uri $Endpoint -ContentType "application/json" -Headers @{
+  $callHeaders = @{
+    "Accept" = "application/json, text/event-stream"
     "MCP-Session-Id" = $SessionId
-  } -Body $callBody
+  }
 
-  return ($response.Content | ConvertFrom-Json)
+  $response = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $Endpoint -ContentType "application/json" -Headers $callHeaders -Body $callBody
+
+  try {
+    return (Convert-McpResponse -RawContent $response.Content)
+  } catch {
+    Write-Host "Failed to parse response for session=$SessionId requestId=$RequestId" -ForegroundColor Yellow
+    Write-Host "Raw response:" -ForegroundColor Yellow
+    Write-Host $response.Content
+    throw
+  }
 }
 
 Write-Host "Creating session A..."
-$sessionA = New-McpSession -ClientName "verify-client-A" -RequestId 1
+try {
+  $sessionA = New-McpSession -ClientName "verify-client-A" -RequestId 1
+} catch {
+  Write-Host "\nFailed to create session A." -ForegroundColor Red
+  Write-Host "Endpoint: $Endpoint"
+  Write-Host "Hint: Start the stateful server and ensure /mcp is available on the same host/port." -ForegroundColor Yellow
+  Write-Host "      If localhost resolves to another process, try -Endpoint http://127.0.0.1:3000/mcp" -ForegroundColor Yellow
+  throw
+}
 Write-Host "Creating session B..."
 $sessionB = New-McpSession -ClientName "verify-client-B" -RequestId 2
 

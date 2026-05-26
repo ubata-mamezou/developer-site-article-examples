@@ -68,6 +68,12 @@ npm run client
 npm run verify_stateful_counter
 ```
 
+補足: `localhost` で別プロセスに到達する環境では、以下のように `127.0.0.1` を指定して実行します。
+
+```bash
+powershell -ExecutionPolicy Bypass -File ./tools/verify-stateful-counter.ps1 -Endpoint http://127.0.0.1:3000/mcp
+```
+
 `counter` ツールを2つのセッションで呼び出し、以下を確認します。
 
 - セッションA: count=1, count=2

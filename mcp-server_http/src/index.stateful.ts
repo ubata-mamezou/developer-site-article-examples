@@ -11,7 +11,17 @@ const WEB_API_BASE_URL = process.env.WEB_API_BASE_URL ?? "http://localhost:3001"
 const WEB_API_CALL_FAILED_MESSAGE = "WebAPI call failed";
 const sessionCounters = new Map<string, number>();
 
-function createServer() {
+type SessionContext = {
+  server: McpServer;
+  transport: StreamableHTTPServerTransport;
+};
+
+// 現行SDKでは McpServer が同時に接続できる transport は1つだけで、
+// stateful transport も単一の sessionId を内部に保持するため、
+// セッションごとの接続コンテキストを保持している。
+const sessions = new Map<string, SessionContext>();
+
+function createServer(getSessionId: () => string | undefined) {
   // サーバーインスタンスの生成
   const server = new McpServer({
     name: "todo-mcp-stateful",
@@ -53,7 +63,7 @@ function createServer() {
       description: "セッションごとのカウンターを1増やす",
     },
     async () => {
-      const sessionId = transport.sessionId;
+      const sessionId = getSessionId();
 
       if (!sessionId) {
         return { content: [{ type: "text", text: "session id is not available" }] };
@@ -73,18 +83,46 @@ function createServer() {
 }
 
 const app = createMcpExpressApp();
-const server = createServer();
-const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: () => randomUUID(),
-});
+
+async function createSessionContext() {
+  // sessionIdGenerator は汎用的な採番戦略ではなく、
+  // この transport 自身に紐づく sessionId を初期化時に決めるためのコールバック。
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+  });
+  const server = createServer(() => transport.sessionId);
+  await server.connect(refineTransport(server, transport));
+  return { server, transport };
+}
 
 // 起動処理
 async function boot() {
-  await server.connect(refineTransport(server, transport));
-
   app.post("/mcp", async (req, res) => {
     try {
-      await transport.handleRequest(req, res, req.body);
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+      let context: SessionContext | undefined;
+
+      if (sessionId) {
+        context = sessions.get(sessionId);
+        if (!context) {
+          res.status(404).json({
+            jsonrpc: "2.0",
+            error: { code: -32001, message: "Unknown session" },
+            id: null,
+          });
+          return;
+        }
+      } else {
+        context = await createSessionContext();
+      }
+
+      await context.transport.handleRequest(req, res, req.body);
+
+      // initialize 後に transport 自身へ設定された sessionId をキーに保持する。
+      const issuedSessionId = context.transport.sessionId;
+      if (issuedSessionId) {
+        sessions.set(issuedSessionId, context);
+      }
     } catch (error) {
       console.error("Error handling MCP request:", error);
       if (!res.headersSent) {
@@ -107,8 +145,10 @@ async function boot() {
 }
 
 process.on("SIGINT", async () => {
-  await transport.close();
-  await server.close();
+  for (const context of sessions.values()) {
+    await context.transport.close();
+    await context.server.close();
+  }
   process.exit(0);
 });
 
