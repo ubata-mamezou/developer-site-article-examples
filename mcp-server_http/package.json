@@ -10,7 +10,8 @@
     "server_stateless": "npm run build && node dist/index.stateless.js",
     "server_stateful": "npm run build && node dist/index.stateful.js",
     "sample-api": "npm run build && node dist/sample-web-api.js",
-    "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp"
+    "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp",
+    "client2": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp --port 6275"
   },
   "keywords": [],
   "author": "",
