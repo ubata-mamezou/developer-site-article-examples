@@ -85,8 +85,8 @@ function createServer(getSessionId: () => string | undefined) {
 const app = createMcpExpressApp();
 
 async function createSessionContext() {
-  // sessionIdGenerator は汎用的な採番戦略ではなく、
-  // この transport 自身に紐づく sessionId を初期化時に決めるためのコールバック。
+  // `sessionIdGenerator`は汎用的な採番戦略ではなく、
+  // この`transport`自身に紐づく`sessionId`を初期化時に決めるためのコールバック。
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
   });
