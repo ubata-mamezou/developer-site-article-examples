@@ -85,8 +85,9 @@ function createServer(getSessionId: () => string | undefined) {
 const app = createMcpExpressApp();
 
 async function createSessionContext() {
-  // `sessionIdGenerator`は汎用的な採番戦略ではなく、
-  // この`transport`自身に紐づく`sessionId`を初期化時に決めるためのコールバック。
+  // **sessionIdGenerator**
+  // 名称から勘違いしてしまいがちですが、汎用的な採番戦略ではありません。  
+  // これはトランスポートに紐づくセッションIDを初期化時に決めるためのコールバックです。  
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
   });
@@ -99,6 +100,9 @@ async function createSessionContext() {
 async function boot() {
   app.post("/mcp", async (req, res) => {
     try {
+      // **MCP-Session-Id**
+      // 初回のリクエストで振り出され、クライアントが受け取ります。  
+      // 2回目以降のリクエストでは、`MCP-Session-Id`ヘッダーとして付与して再利用します。  
       const sessionId = req.headers["mcp-session-id"] as string | undefined;
       let context: SessionContext | undefined;
 
