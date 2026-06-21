@@ -32,7 +32,7 @@ function createServer() {
     {
       title: "code-review-prompt",
       description: "コードレビュー指示",
-      // 引数スキーマの定義
+      // 引数スキーマの定義：MCP InspectorなどのMCPクライアントのUIで入力フォームとして表示され、サーバー側の関数に渡されます。
       argsSchema: {
         specPath: z.string().describe("仕様書パス"),
         codePath: z.string().describe("対象コードパス"),
