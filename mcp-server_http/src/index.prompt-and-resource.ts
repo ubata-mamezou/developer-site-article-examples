@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -9,21 +9,44 @@ const PORT = Number(process.env.PORT ?? "3000");
 function createServer() {
   const server = new McpServer({ name: "todo-mcp-prompt", version: "1.0.0" });
 
-  // リソース: プロンプト/ツール が参照する前提情報
+  // リソース: アノテーション付きの静的リソース（テキストコンテンツ）
   const testGuideUri = "memory://guides/testcase-prompt-playbook";
+  const testGuideText = [
+    "# API Testcase Prompt Playbook",
+    "- 仕様の観点: 正常系、境界値、異常系、認可、冪等性",
+    "- 制約はテスト観点の優先順位に反映する",
+    "- 最終出力は箇条書きで簡潔にまとめる",
+  ].join("\n");
   server.registerResource(
     "testcase-prompt-playbook",
     testGuideUri,
-    { mimeType: "text/markdown", description: "テスト観点生成のガイド" },
-    async () => {
-      const text = [
-        "# API Testcase Prompt Playbook",
-        "- 仕様の観点: 正常系、境界値、異常系、認可、冪等性",
-        "- 制約はテスト観点の優先順位に反映する",
-        "- 最終出力は箇条書きで簡潔にまとめる",
-      ].join("\n");
-      return { contents: [{ uri: testGuideUri, text }] };
-    }
+    {
+      mimeType: "text/markdown",
+      description: "テスト観点生成のガイド",
+      annotations: {
+        audience: ["assistant"],           // AIへの参照情報として位置づける
+        priority: 0.8,                     // 重要度（高め）
+        lastModified: "2026-06-22T00:00:00Z",
+      },
+    },
+    async () => ({ contents: [{ uri: testGuideUri, mimeType: "text/markdown", text: testGuideText }] }),
+  );
+
+  // リソーステンプレート: URIのパラメータで内容が変わる動的リソース
+  server.registerResource(
+    "order-detail",
+    new ResourceTemplate("orders://{orderId}/detail", {
+      list: async () => ({
+        resources: [
+          { uri: "orders://O00001/detail", name: "O00001", mimeType: "application/json" },
+          { uri: "orders://O00002/detail", name: "O00002", mimeType: "application/json" },
+        ],
+      }),
+    }),
+    { mimeType: "application/json", description: "受注詳細" },
+    async (uri, { orderId }) => ({
+      contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ orderId, status: "pending" }) }],
+    }),
   );
 
   // プロンプト：コードレビュー指示をテンプレート化した例
