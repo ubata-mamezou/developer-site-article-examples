@@ -11,12 +11,6 @@ function createServer() {
 
   // リソース: アノテーション付きの静的リソース（テキストコンテンツ）
   const testGuideUri = "memory://guides/testcase-prompt-playbook";
-  const testGuideText = [
-    "# API Testcase Prompt Playbook",
-    "- 仕様の観点: 正常系、境界値、異常系、認可、冪等性",
-    "- 制約はテスト観点の優先順位に反映する",
-    "- 最終出力は箇条書きで簡潔にまとめる",
-  ].join("\n");
   server.registerResource(
     "testcase-prompt-playbook",
     testGuideUri,
@@ -26,10 +20,22 @@ function createServer() {
       annotations: {
         audience: ["assistant"],           // AIへの参照情報として位置づける
         priority: 0.8,                     // 重要度（高め）
-        lastModified: "2026-06-22T00:00:00Z",
+        lastModified: "2026-06-28T00:00:00Z",
       },
     },
-    async () => ({ contents: [{ uri: testGuideUri, mimeType: "text/markdown", text: testGuideText }] }),
+    async () => ({
+      contents: [{
+        uri: testGuideUri, mimeType: "text/markdown",
+        text: [
+          // 実務ではもっと細かい指示が必要になりますが、行数を抑えるため最小限に留めています
+          "# APIテストケース作成ガイド",
+          "- 仕様の観点: 正常系、代替系、異常系、境界値、認可、冪等性",
+          "- 基本フローの正常系を中心に、代替系、異常系、その他の観点を付加する形にまとめる。",
+          "- ユースケースの検証を主眼とし、入力値検証などは含めない（単体テストで担保する）",
+          "- 必要に応じて分類しながら、箇条書きで簡潔にまとめる",
+        ].join("\n")
+      }]
+    }),
   );
 
   // リソーステンプレート: URIのパラメータで内容が変わる動的リソース
@@ -69,7 +75,7 @@ function createServer() {
             role: "user",
             content: {
               type: "text",
-      			  // 実務ではもっと細かい指示が必要になりますが、行数を抑えるため最小限に留めています
+              // 実務ではもっと細かい指示が必要になりますが、行数を抑えるため最小限に留めています
               text: [
                 "コードレビュー指示",
                 "あなたはNode.js/TypeScriptのバックエンド開発スペシャリストです。",
@@ -118,7 +124,7 @@ function createServer() {
         "2. tools/callでcheck-attached-inventoryを実行してください。（引数: orderId: 1のレスポンスのorderId, quantity: 1のレスポンスのquantityの合計）",
         "3. 2のレスポンスのavailableがtrueなら「在庫引当済み」、falseなら「在庫不足」と返してください。",
       ].join("\n")
-      return {messages: [{role: "user", content: {type: "text", text: prompt,}}]};
+      return { messages: [{ role: "user", content: { type: "text", text: prompt, } }] };
     },
   );
   server.registerTool(
@@ -168,13 +174,36 @@ async function boot() {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport();
 
+    res.on("close", async () => {
+      try {
+        await transport.close();
+        await server.close();
+      } catch (error) {
+        console.error("Failed to close MCP transport/server:", error);
+      }
+    });
+
     try {
       await server.connect(refineTransport(server, transport));
       await transport.handleRequest(req, res, req.body);
-    } finally {
-      await transport.close();
-      await server.close();
+    } catch (error) {
+      console.error("Error handling MCP request:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error" },
+          id: null,
+        });
+      }
     }
+  });
+
+  app.get("/mcp", (_req, res) => {
+    res.writeHead(405).end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null }));
+  });
+
+  app.delete("/mcp", (_req, res) => {
+    res.writeHead(405).end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null }));
   });
 
   app.listen(PORT, () => {
