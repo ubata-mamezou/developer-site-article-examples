@@ -7,7 +7,7 @@
     * [AIエージェントとシステムをつなぐMCP入門（StreamableHTTPステートレス実装編）](https://developer.mamezou-tech.com/blogs/2026/05/22/mcp-impl_http_stateless/)
     * [AIエージェントとシステムをつなぐMCP入門（StreamableHTTPステートフル実装編）](https://developer.mamezou-tech.com/blogs/2026/06/05/mcp-impl_http_stateful/)
     * [AIエージェントとシステムをつなぐMCP入門（プロンプト編）](https://developer.mamezou-tech.com/blogs/2026/06/19/mcp-impl_prompt/)
-    * AIエージェントとシステムをつなぐMCP入門（リソース編）
+    * [AIエージェントとシステムをつなぐMCP入門（リソース編）](https://developer.mamezou-tech.com/blogs/2026/07/03/mcp-impl_resource/)
 * mcp-server_stdio
   * MCPサーバー（stdio）のサンプルコード
   * 関連記事: [AIエージェントとシステムをつなぐMCP入門（stdio実装編）](https://developer.mamezou-tech.com/blogs/2026/05/08/mcp-impl_stdio/)
