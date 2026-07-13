@@ -8,11 +8,16 @@
     "build": "tsc",
     "test": "jest"
   },
-  "keywords": ["math", "utility", "yalc", "demo"],
+  "keywords": [
+    "math",
+    "utility",
+    "yalc",
+    "demo"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "26.1.0",
+    "typescript": "^6.0.3"
   }
 }
