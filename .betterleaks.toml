@@ -1,0 +1,8 @@
+# betterleaks 設定ファイル
+# ref: https://github.com/betterleaks/betterleaks/blob/main/docs/config.md
+
+title = "developer-site-article-examples betterleaks config"
+
+[extend]
+  # betterleaks 公式のデフォルトルールセットを継承する
+  useDefault = true

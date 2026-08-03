@@ -1,0 +1,10 @@
+# betterleaks スキャン除外ファイル（.gitignore と同じ書式）
+# ref: https://github.com/betterleaks/betterleaks
+
+# Keycloak realm import はローカル開発専用のダミークレデンシャルを含む
+# 本番環境では使用しない値のため除外する
+mcp-auth-streamable-http/keycloak/realm-import/mcp-demo-realm.json
+
+# .env.example はサンプル値（ローカル開発専用のダミー）を含むテンプレートファイル
+# 実際の認証情報は .env に記載し、.gitignore で除外すること
+mcp-auth-streamable-http/.env.example

@@ -1,0 +1,60 @@
+{
+  "realm": "mcp-demo",
+  "enabled": true,
+  "displayName": "MCP Demo Realm",
+  "clientScopes": [
+    {
+      "name": "mcp:tools",
+      "description": "Scope for MCP tools access",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "aud-mcp-resource",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:3020/mcp",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "mcp-server",
+      "name": "MCP Server Introspection Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "mcp-server-secret",
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "mcp-demo-client",
+      "name": "MCP Demo Token Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "mcp-demo-client-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "email",
+        "roles",
+        "mcp:tools"
+      ]
+    }
+  ]
+}
