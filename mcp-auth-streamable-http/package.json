@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node dist/index.js",
+    "server": "npm run build && node dist/index.js",
     "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3020/mcp",
     "verify:auth-flow": "bash ./tools/verify-auth-flow.sh"
   },

@@ -99,6 +99,7 @@ const oauthMetadata: OAuthMetadata = {
 
 /**
  * Keycloakのtoken introspectionを使ったトークン検証の実装。
+ * 
  * `OAuthTokenVerifier` インターフェースを実装し `requireBearerAuth` に渡す。
  * `Authorization: Bearer <token>` のトークン部分が `verifyAccessToken` の引数になる。
  */
