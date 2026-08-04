@@ -5,7 +5,7 @@ MCP Serverのstdio実装サンプルです。
 ## 前提
 
 - Node.js 22+
-- npm
+- npm 11+
 
 ## セットアップ
 
