@@ -13,8 +13,8 @@ Keycloakをすぐに起動してデモを実行できます。
 
 ## 利用技術
 
-- Node.js 24.x+
-- npm 11.x+
+- Node.js 26+
+- npm 11+
 - TypeScript 7
 - @modelcontextprotocol 2+
 - Keycloak 26.3.4
@@ -69,9 +69,9 @@ docker compose down
 ---
 ## 実行
 
-まずはMCP Inspectorで試行。
-
 ### Authorizationヘッダーなし（MCP Inspector）
+
+まずはMCP Inspectorで試行。
 
 **UI上のメッセージ**
 ```txt
