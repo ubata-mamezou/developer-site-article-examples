@@ -1,0 +1,28 @@
+{
+  "name": "llm-sample",
+  "version": "1.0.0",
+  "description": "LLMを使ったサンプル",
+  "keywords": [
+    "llm"
+  ],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "npx tsx src/index.ts",
+    "test": "test"
+  },
+  "dependencies": {
+    "@google/genai": "^2.17.1",
+    "dotenv": "^17.4.2",
+    "openai": "^7.4.0",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
