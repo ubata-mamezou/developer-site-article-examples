@@ -10,19 +10,22 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "build": "tsc",
-    "start": "npx tsx src/index.ts",
+    "build": "npm run format && tsc",
+    "start": "npm run format && npx tsx src/index.ts",
     "start:work-rules": "npm run start -- resources/document_work-rules.txt resources/prompt_work-rules.txt",
     "start:novel": "npm run start -- resources/document_novel.txt resources/prompt_novel.txt",
+    "format": "biome format --write src/",
+    "lint": "biome lint src/",
+    "check": "biome check --write src/",
     "test": "test"
   },
   "dependencies": {
     "@google/genai": "^2.17.1",
     "dotenv": "^17.4.2",
-    "openai": "^7.4.0",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.9",
     "@types/node": "^26.2.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
