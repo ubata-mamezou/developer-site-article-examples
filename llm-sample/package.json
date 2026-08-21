@@ -12,6 +12,8 @@
   "scripts": {
     "build": "tsc",
     "start": "npx tsx src/index.ts",
+    "start:work-rules": "npm run start -- resources/document_work-rules.txt resources/prompt_work-rules.txt",
+    "start:novel": "npm run start -- resources/document_novel.txt resources/prompt_novel.txt",
     "test": "test"
   },
   "dependencies": {
