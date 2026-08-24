@@ -3,10 +3,6 @@
 
 title = "developer-site-article-examples betterleaks config"
 
-[extend]
-  # betterleaks 公式のデフォルトルールセットを継承する
-  useDefault = true
-
 # ローカル検証専用ファイルを、ファイル単位でスキャン対象から除外する。
 prefilter = '''
 filter.matchesAny(attributes["path"], [
@@ -17,7 +13,7 @@ filter.matchesAny(attributes["path"], [
   `^mcp-auth-streamable-http/docker-compose\.yml$`,
   `^mcp-auth-streamable-http/keycloak/realm-import/mcp-demo-realm\.json$`,
   `^mcp-auth-streamable-http/\.env\.example$`,
-  `^mcp-auth-streamable-http/\README\.md$`
+  `^mcp-auth-streamable-http/README\.md$`
 ])
 '''
 
@@ -30,3 +26,7 @@ finding["secret"] in [
   "dummy1234",
 ]
 '''
+
+[extend]
+  # betterleaks 公式のデフォルトルールセットを継承する
+  useDefault = true
