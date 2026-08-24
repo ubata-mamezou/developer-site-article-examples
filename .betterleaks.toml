@@ -12,7 +12,12 @@ prefilter = '''
 filter.matchesAny(attributes["path"], [
   `^mcp-auth/keycloak/realm-import/mcp-demo-realm\.json$`,
   `^mcp-auth/\.env\.example$`,
-  `^mcp-auth/\docker-compose\.yml$`
+  `^mcp-auth/docker-compose\.yml$`,
+  # 現在は存在しないフォルダの除外
+  `^mcp-auth-streamable-http/docker-compose\.yml$`,
+  `^mcp-auth-streamable-http/keycloak/realm-import/mcp-demo-realm\.json$`,
+  `^mcp-auth-streamable-http/\.env\.example$`,
+  `^mcp-auth-streamable-http/\README\.md$`
 ])
 '''
 
@@ -22,11 +27,6 @@ filter = '''
 finding["secret"] in [
   "bad_format_token",
   "unknown_token",
-  "dummy1234"
-#   "mcp-server-secret",
-#   "mcp-demo-client-secret",
-#   "mcp-demo-no-scope-client-secret",
-#   "mcp-demo-no-audience-client-secret",
-#   "mcp-demo-diff-audience-client-secret"
+  "dummy1234",
 ]
 '''
