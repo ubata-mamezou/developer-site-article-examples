@@ -9,7 +9,6 @@ filter.matchesAny(attributes["path"], [
   `^mcp-auth/keycloak/realm-import/mcp-demo-realm\.json$`,
   `^mcp-auth/\.env\.example$`,
   `^mcp-auth/docker-compose\.yml$`,
-  # 現在は存在しないフォルダの除外
   `^mcp-auth-streamable-http/docker-compose\.yml$`,
   `^mcp-auth-streamable-http/keycloak/realm-import/mcp-demo-realm\.json$`,
   `^mcp-auth-streamable-http/\.env\.example$`,
