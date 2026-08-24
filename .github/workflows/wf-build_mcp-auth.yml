@@ -20,7 +20,7 @@ defaults:
     working-directory: mcp-auth
 
 env:
-  betterleaks_version: v1.8.0
+  betterleaks_version: 1.8.0
 
 jobs:
   # ──────────────────────────────────────────
@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -sSfL \
-            "https://github.com/betterleaks/betterleaks/releases/download/${{ env.betterleaks_version }}/betterleaks_Linux_x86_64.tar.gz" \
+            "https://github.com/betterleaks/betterleaks/releases/download/v${{ env.betterleaks_version }}/betterleaks_${{ env.betterleaks_version }}_linux_x64.tar.gz"
             | tar -xz betterleaks
           sudo install -m 755 betterleaks /usr/local/bin/
           rm betterleaks
