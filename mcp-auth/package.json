@@ -1,0 +1,36 @@
+{
+  "name": "mcp-auth",
+  "version": "1.0.0",
+  "description": "MCP Streamable HTTP server with Bearer authentication",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "server": "npm run build && node dist/index.js",
+    "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp",
+    "verify:auth-flow": "bash ./tools/verify-auth-flow.sh"
+  },
+  "keywords": [
+    "mcp",
+    "streamable-http",
+    "oauth",
+    "bearer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "express": "^4.21.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "26.2.0",
+    "typescript": "7.0.2"
+  }
+}

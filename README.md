@@ -1,6 +1,9 @@
 # デベロッパーサイト記事で作ったサンプルコード
 
 ## 構成
+* mcp-auth
+  * MCPサーバー（StreamableHTTP）の認証/認可サンプルコード
+    * [AIエージェントとシステムをつなぐMCP入門（認証/認可編）](https://developer.mamezou-tech.com/blogs/2026/08/28/mcp-impl_auth/)
 * mcp-server_http
   * MCPサーバー（StreamableHTTP）のサンプルコード
   * 関連記事
