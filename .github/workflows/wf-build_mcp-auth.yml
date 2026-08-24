@@ -50,7 +50,7 @@ jobs:
           rm betterleaks
 
       - name: Scan for secrets
-        run: betterleaks git .
+        run: betterleaks git . --report-format json --report-path betterleaks-report.json
 
   # ──────────────────────────────────────────
   # ビルド
