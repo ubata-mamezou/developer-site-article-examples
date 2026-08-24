@@ -5,19 +5,22 @@ on:
   push:
     paths:
       - "mcp-auth/**"
-      - ".github/workflows/mcp-auth-streamable-http.yml"
+      - ".github/workflows/mcp-auth.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
   pull_request:
     paths:
       - "mcp-auth/**"
-      - ".github/workflows/mcp-auth-streamable-http.yml"
+      - ".github/workflows/mcp-auth.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
 
 defaults:
   run:
     working-directory: mcp-auth
+
+env:
+  betterleaks_version: v1.8.0
 
 jobs:
   # ──────────────────────────────────────────
@@ -40,9 +43,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(gh release view --repo betterleaks/betterleaks --json tagName -q .tagName)
           curl -sSfL \
-            "https://github.com/betterleaks/betterleaks/releases/download/${VERSION}/betterleaks_Linux_x86_64.tar.gz" \
+            "https://github.com/betterleaks/betterleaks/releases/download/${{ env.betterleaks_version }}/betterleaks_Linux_x86_64.tar.gz" \
             | tar -xz betterleaks
           sudo install -m 755 betterleaks /usr/local/bin/
           rm betterleaks
