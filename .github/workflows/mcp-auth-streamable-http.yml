@@ -1,27 +1,29 @@
-name: mcp-auth-streamable-http CI
+name: mcp-auth CI
 
 on:
+  workflow_dispatch:
   push:
     paths:
-      - "mcp-auth-streamable-http/**"
+      - "mcp-auth/**"
       - ".github/workflows/mcp-auth-streamable-http.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
   pull_request:
     paths:
-      - "mcp-auth-streamable-http/**"
+      - "mcp-auth/**"
       - ".github/workflows/mcp-auth-streamable-http.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
 
 defaults:
   run:
-    working-directory: mcp-auth-streamable-http
+    working-directory: mcp-auth
 
 jobs:
   # ──────────────────────────────────────────
   # シークレットスキャン
   # .betterleaksignore によりローカル開発用ダミー値は除外される
+  # memo: betterleaksはGitleaksの後継
   # ──────────────────────────────────────────
   secret-scan:
     name: Secret Scan (betterleaks)
@@ -30,7 +32,7 @@ jobs:
       run:
         working-directory: "."   # betterleaks はリポジトリルートで動かす
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0         # 全履歴をスキャン対象にする
 
@@ -57,13 +59,13 @@ jobs:
     needs: secret-scan
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
-          cache-dependency-path: mcp-auth-streamable-http/package-lock.json
+          cache-dependency-path: mcp-auth/package-lock.json
 
       - name: Install dependencies
         run: npm ci

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MCP_ENDPOINT="${MCP_ENDPOINT:-http://localhost:3020/mcp}"
-KEYCLOAK_TOKEN_ENDPOINT="${KEYCLOAK_TOKEN_ENDPOINT:-http://localhost:8080/realms/mcp-demo/protocol/openid-connect/token}"
+MCP_ENDPOINT="${MCP_ENDPOINT:-http://localhost:3000/mcp}"
+KEYCLOAK_TOKEN_ENDPOINT="${KEYCLOAK_TOKEN_ENDPOINT:-http://localhost:8081/realms/mcp-demo/protocol/openid-connect/token}"
 CLIENT_ID="${CLIENT_ID:-mcp-demo-client}"
 CLIENT_SECRET="${CLIENT_SECRET:-mcp-demo-client-secret}"
 

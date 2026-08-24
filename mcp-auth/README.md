@@ -3,18 +3,18 @@
 このフォルダーは、MCP Streamable HTTPサーバーにBearer認証を追加し、
 Keycloakのトークンイントロスペクションで検証する最小構成のサンプルです。
 
-`docker-compose.yml` とRealm初期データを同梱しているため、
-Keycloakをすぐに起動してデモを実行できます。
+`docker-compose.yml` とRealm初期データを同梱しているため、Keycloakをすぐに起動してデモを実行できます。
 
-- MCP endpoint: `http://localhost:3020/mcp`
-- Protected Resource Metadata endpoint: `http://localhost:3020/.well-known/oauth-protected-resource`
+- MCP endpoint: `http://localhost:3000/mcp`
+- Protected Resource Metadata endpoint: `http://localhost:3000/.well-known/oauth-protected-resource/mcp`
+- Keycloak endpoint: `http://localhost:8081`
 
 本サンプルはMCP SDK v2の `@modelcontextprotocol/express` が提供する `mcpAuthMetadataRouter` と `requireBearerAuth` を使い、トークンの検証はKeycloakのイントロスペクションエンドポイントへ委譲します。
 
 ## 利用技術
 
 - Node.js 26+
-- npm 11+
+- npm 12+
 - TypeScript 7
 - @modelcontextprotocol 2+
 - Keycloak 26.3.4
@@ -28,7 +28,7 @@ npm i
 
 ## 環境変数
 
-設定値は`.env.sample`を参照してください。
+設定値は`.env.example`を参照してください。Keycloakのホスト側ポートは`8081`、コンテナー内部のポートは`8080`です。
 
 ## 起動手順
 
@@ -38,22 +38,101 @@ npm i
 docker compose up -d
 ```
 
-同梱Realmにより、以下のデモ値が自動作成されます。
+同梱Realmにより、以下のデモ用設定が自動作成されます。
 
-- realm: `mcp-demo`
-- scope: `mcp:tools`
-- introspection client: `mcp-server` / `mcp-server-secret`
-- token取得用client: `mcp-demo-client` / `mcp-demo-client-secret`
+* realm: `mcp-demo`
+* Client Scope:
+  * `mcp:tools`: aud=`http://localhost:3000/mcp`
+  * `mcp:no-scope`: aud=`http://localhost:3000/mcp`
+  * `mcp:diff-audience`: aud=`http://localhost:3000/mcp-diff`
+* Client
+  * Introspection用: `mcp-server`, `mcp-server-secret`
+  * 正常系トークン取得用: `mcp-demo-client`, `mcp-demo-client-secret`
+  * Scope不足検証用: `mcp-demo-no-scope-client`, `mcp-demo-no-scope-client-secret`（`mcp:no-scope`を付与）
+  * Audienceなし検証用: `mcp-demo-no-audience-client`, `mcp-demo-no-audience-client-secret`
+  * Audience不一致検証用: `mcp-demo-diff-audience-client`, `mcp-demo-diff-audience-client-secret`（`mcp:diff-audience`を付与）
 
 > [NOTE]
 > これらの値はローカル検証用の固定デモ設定です。  
 > 実際の運用環境では`client_secret`はSecret機能を利用してコード上にもってはいけません。
 
-2. MCPサーバー起動
+1. 環境変数の設定（必要な場合）
+
+`.env.example`の値を使用する場合は、シェルに読み込んでからサーバーを起動します。
+
+3. MCPサーバー起動
 
 ```sh
-npm run start
+npm run server
 ```
+
+## 手動実行
+
+1. トークン取得
+```sh
+curl -s -X POST http://localhost:8081/realms/mcp-demo/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=mcp-demo-client" \
+  -d "client_secret=mcp-demo-client-secret"
+
+{"access_token":"<valid_token>","expires_in":300,"refresh_expires_in":0,"token_type":"Bearer","not-before-policy":0,"scope":"mcp:tools"}
+```
+
+レスポンスの`access_token`を使ってMCPサーバーへアクセスします。`-i`を付けると、レスポンスヘッダーとHTTPステータスも確認できます。
+
+2. MCPサーバーへアクセス
+
+レスポンスの`access_token`を使って、MCPへアクセスします。
+
+```sh
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer <valid_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+## エラーケースの確認
+
+### Scope不足
+
+`mcp-demo-no-scope-client`には`mcp:tools`を割り当てていません。取得したトークンは有効ですが必要Scopeがないため、MCPサーバーは`403 Forbidden`を返します。
+
+```sh
+curl -i -s -X POST http://localhost:8081/realms/mcp-demo/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=mcp-demo-no-scope-client" \
+  -d "client_secret=mcp-demo-no-scope-client-secret"
+
+curl -i -s -X POST http://localhost:3000/mcp \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+期待する結果:
+
+```text
+HTTP/1.1 403 Forbidden
+{"error":"insufficient_scope","error_description":"Insufficient scope"}
+```
+
+### Audienceなし・Audience不一致
+
+`OAUTH_STRICT=true`の場合、トークンにはMCPサーバー向けのAudienceが必要です。Audienceがない場合、または`http://localhost:3000/mcp`と異なるAudienceの場合は`401 Unauthorized`になります。
+
+```text
+Audienceなし:
+{"error":"invalid_token","error_description":"Resource indicator (aud) missing"}
+
+Audience不一致:
+{"error":"invalid_token","error_description":"Expected audience compatible with http://localhost:3000/mcp, got: http://localhost:3000/mcp-diff"}
+```
+
+これらのケースを実行するには、RealmにAudience Mapperを持つ検証用Client Scopeと、それを割り当てたClientを追加します。正常系の`mcp:tools`に正しいAudience Mapperを残したまま、誤ったAudienceを追加すると正しいAudienceもトークンに含まれて検証を通過するため、Audience MapperはScope単位で分離してください。
 
 ## 終了手順
 
@@ -66,142 +145,9 @@ Ctrl+Cで終了する。
 docker compose down
 ```
 
----
-## 実行
+## 疎通確認
 
-### Authorizationヘッダーなし（MCP Inspector）
-
-まずはMCP Inspectorで試行。
-
-**UI上のメッセージ**
-```txt
-OAuth Authorization Failed
-Policy 'Allowed Client Scopes' rejected request to client-registration service. Details: Not Permitted to use specified clientScope
-```
-
-**コンソールに出力されるログ**
-```sh
-Error from MCP server: StreamableHTTPError: Streamable HTTP error: Error POSTing to endpoint: {"error":"invalid_token","error_description":"Missing Authorization header"}
-    at StreamableHTTPClientTransport.send (file:///xxx/node_modules/@modelcontextprotocol/sdk/dist/esm/client/streamableHttp.js:364:23)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
-  code: 401
-}
-```
-
-### Authorizationヘッダーなし（curl）
-
-MCP Inspectorだとエラー内容がよくわからないのでcurlで再検証
-
-```sh
-curl -i -X POST http://localhost:3020/mcp \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-
-HTTP/1.1 401 Unauthorized
-X-Powered-By: Express
-WWW-Authenticate: Bearer error="invalid_token", error_description="Missing Authorization header", scope="mcp:tools", resource_metadata="http://localhost:3020/.well-known/oauth-protected-resource/mcp"
-Content-Type: application/json; charset=utf-8
-Content-Length: 76
-ETag: xxxxxxxxxx
-Date: Mon, 03 Aug 2026 15:30:41 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-
-{"error":"invalid_token","error_description":"Missing Authorization header"}
-```
-エラーは期待通り、`401 Unauthorized`で「Authorizationヘッダーが見つからない」となった。
-
-### Authorizationヘッダーに`Bearer `から始まらない値を設定
-
-```sh
-curl -i -X POST http://localhost:3020/mcp \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: bad_format_token" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-
-HTTP/1.1 401 Unauthorized
-X-Powered-By: Express
-WWW-Authenticate: Bearer error="invalid_token", error_description="Invalid Authorization header format, expected 'Bearer TOKEN'", scope="mcp:tools", resource_metadata="http://localhost:3020/.well-known/oauth-protected-resource/mcp"
-Content-Type: application/json; charset=utf-8
-Content-Length: 108
-ETag: xxxxxxxxxx
-Date: Mon, 03 Aug 2026 15:48:43 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-
-{"error":"invalid_token","error_description":"Invalid Authorization header format, expected 'Bearer TOKEN'"}
-```
-エラーは期待通り、`401 Unauthorized`で「形式が有効ではない」となった。
-
-### Authorizationヘッダーに、形式は正しいが存在しないtokenを指定
-
-```sh
-curl -i -X POST http://localhost:3020/mcp \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer unknown_token" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-
-HTTP/1.1 401 Unauthorized
-X-Powered-By: Express
-WWW-Authenticate: Bearer error="invalid_token", error_description="Inactive token", scope="mcp:tools", resource_metadata="http://localhost:3020/.well-known/oauth-protected-resource/mcp"
-Content-Type: application/json; charset=utf-8
-Content-Length: 62
-ETag: xxxxxxxxxx
-Date: Mon, 03 Aug 2026 16:07:44 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-
-{"error":"invalid_token","error_description":"Inactive token"}
-```
-エラーは期待通り、`401 Unauthorized`で「tokenはアクティブではない」となった。
-
-## PRM(Protected Resource Metadata)の確認
-
-```sh
-curl -s http://localhost:3020/.well-known/oauth-protected-resource/mcp
-
-{"resource":"http://localhost:3020/mcp","authorization_servers":["http://localhost:8080/realms/mcp-demo"],"scopes_supported":["mcp:tools"],"resource_name":"MCP Auth Streamable HTTP"}
-```
-
-## 認証して、有効なトークンを使ってアクセス
-
-まずKeycloakからアクセストークンを取得します。
-
-**トークン取得**
-```sh
-curl -s -X POST http://localhost:8080/realms/mcp-demo/protocol/openid-connect/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=mcp-demo-client" \
-  -d "client_secret=mcp-demo-client-secret"
-
-{"access_token":"<valid_token>","expires_in":300,"refresh_expires_in":0,"token_type":"Bearer","not-before-policy":0,"scope":"mcp:tools"}
-```
-
-**MCPサーバーへアクセス**
-
-レスポンスの`access_token`を使って、MCPへアクセスします。
-
-```sh
-curl -s -X POST http://localhost:3020/mcp \
-  -H "Accept: application/json, text/event-stream" \
-  -H "Authorization: Bearer <valid_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-
-event: message
-data: {"result":{"tools":[{"name":"sum_numbers","title":"sum_numbers","description":"Sum two numbers","inputSchema":{"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"a":{"type":"number","description":"first number"},"b":{"type":"number","description":"second number"}},"required":["a","b"]},"outputSchema":{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"result":{"type":"number","description":"sum result"}},"required":["result"],"additionalProperties":false}},{"name":"get_server_policy","title":"get_server_policy","description":"Return simple authorization policy for demo","inputSchema":{"type":"object","properties":{}},"outputSchema":{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"resource":{"type":"string","description":"resource server url"},"requiredScope":{"type":"string","description":"required scope"}},"required":["resource","requiredScope"],"additionalProperties":false}}]},"jsonrpc":"2.0","id":1}
-```
-無事アクセスできました。  
-2026-07-28RCでも謳われていたようにInputSchema, OutputSchemaが2020-12JSONスキーマに準拠していることも見て取れます。
-
-
-## 疎通確認スクリプト
-
-以下を実行すると、Keycloakからトークン取得後に`tools/list`と`tools/call`まで自動確認します。
+以下を実行すると、Keycloakからトークンを取得し、`tools/list`と`tools/call`を自動確認します。これは`client_credentials`を使った検証であり、MCP仕様のAuthorization Code + PKCEフロー全体を実行するものではありません。
 
 ```sh
 npm run verify:auth-flow

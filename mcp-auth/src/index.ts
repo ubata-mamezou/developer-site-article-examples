@@ -2,71 +2,23 @@
 // @modelcontextprotocol/server  … MCPサーバー本体・認証ユーティリティ
 // @modelcontextprotocol/express … Express向けミドルウェア（PRM公開・Bearer認証）
 // @modelcontextprotocol/node    … Node.js向けStreamable HTTPトランスポート
-import {
-  McpServer,
-  OAuthError,
-  OAuthErrorCode,
-  checkResourceAllowed,
-  resourceUrlFromServerUrl,
-} from "@modelcontextprotocol/server";
-import type {
-  OAuthTokenVerifier,
-  OAuthMetadata,
-  StandardSchemaWithJSON,
-} from "@modelcontextprotocol/server";
+import { McpServer } from "@modelcontextprotocol/server";
 import {
   createMcpExpressApp,
   getOAuthProtectedResourceMetadataUrl,
   mcpAuthMetadataRouter,
   requireBearerAuth,
 } from "@modelcontextprotocol/express";
+import { oauthMetadata, createTokenVerifier, REQUIRED_SCOPE } from "./providers/keycloak.js";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { z } from "zod";
 
-/** このサーバーがリッスンするポート番号。環境変数 PORT で上書き可能。 */
-const PORT = Number(process.env.PORT ?? "3020");
-
-/** MCPエンドポイントのパス。環境変数 MCP_PATH で上書き可能。 */
+/** このサーバーがリッスンするポート番号。 */
+const PORT = Number(process.env.PORT ?? "3000");
+/** MCPエンドポイントのパス。 */
 const MCP_PATH = process.env.MCP_PATH ?? "/mcp";
-
-/**
- * このサーバー自身の公開URL。
- * Audience検証（`aud` クレーム）やPRMの `resource` フィールドに使用する。
- */
-const RESOURCE_SERVER_URL =
-  process.env.RESOURCE_SERVER_URL ?? `http://localhost:${PORT}${MCP_PATH}`;
-
-/**
- * KeycloakのRealm URL。
- * トークンエンドポイント・introspectionエンドポイントURLのベースとなる。
- */
-const KEYCLOAK_ISSUER_URL =
-  process.env.KEYCLOAK_ISSUER_URL ?? "http://localhost:8080/realms/mcp-demo";
-
-/**
- * トークンの有効性をKeycloakへ問い合わせるintrospectionエンドポイント。
- * 未設定時は `KEYCLOAK_ISSUER_URL` から自動生成する。
- */
-const KEYCLOAK_INTROSPECTION_ENDPOINT =
-  process.env.KEYCLOAK_INTROSPECTION_ENDPOINT ??
-  `${KEYCLOAK_ISSUER_URL}/protocol/openid-connect/token/introspect`;
-
-/** introspectionリクエストに使うOAuthクライアントID（`mcp-server` クライアント）。 */
-const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID ?? "mcp-server";
-
-/** introspectionリクエストに使うOAuthクライアントシークレット。 */
-const OAUTH_CLIENT_SECRET =
-  process.env.OAUTH_CLIENT_SECRET ?? "mcp-server-secret";
-
-/** 呼び出し元のトークンが保持していなければならないスコープ。 */
-const REQUIRED_SCOPE = process.env.REQUIRED_SCOPE ?? "mcp:tools";
-
-/**
- * `true` の場合、トークンの `aud`（Audience）クレームがこのサーバーのURLと
- * 互換性を持つかどうかを追加検証する。
- */
-const OAUTH_STRICT =
-  (process.env.OAUTH_STRICT ?? "true").toLowerCase() === "true";
+/** このサーバー自身の公開URL。Audience検証（`aud` クレーム）やPRMの `resource` フィールドに使用する。 */
+const RESOURCE_SERVER_URL = process.env.RESOURCE_SERVER_URL ?? `http://localhost:${PORT}${MCP_PATH}`;
 
 /**
  * MCP向けのExpressアプリインスタンス。
@@ -89,111 +41,7 @@ const mcpServerUrl = new URL(RESOURCE_SERVER_URL);
  * `GET /.well-known/oauth-protected-resource`（PRM）のレスポンスに含まれる。
  * MCPクライアントはこの情報を参照して「どこでトークンを取得すればよいか」を自動検出する。
  */
-const oauthMetadata: OAuthMetadata = {
-  issuer: KEYCLOAK_ISSUER_URL,
-  authorization_endpoint: `${KEYCLOAK_ISSUER_URL}/protocol/openid-connect/auth`,
-  token_endpoint: `${KEYCLOAK_ISSUER_URL}/protocol/openid-connect/token`,
-  introspection_endpoint: KEYCLOAK_INTROSPECTION_ENDPOINT,
-  response_types_supported: ["code"],
-};
-
-/**
- * Keycloakのtoken introspectionを使ったトークン検証の実装。
- * 
- * `OAuthTokenVerifier` インターフェースを実装し `requireBearerAuth` に渡す。
- * `Authorization: Bearer <token>` のトークン部分が `verifyAccessToken` の引数になる。
- */
-const tokenVerifier: OAuthTokenVerifier = {
-  verifyAccessToken: async (token) => {
-    // introspection リクエストのパラメータを組み立てる
-    const params = new URLSearchParams({
-      token,
-      client_id: OAUTH_CLIENT_ID,
-    });
-    if (OAUTH_CLIENT_SECRET) {
-      params.set("client_secret", OAUTH_CLIENT_SECRET);
-    }
-
-    // Keycloak の introspection エンドポイントにHTTP POSTで問い合わせる
-    const response = await fetch(KEYCLOAK_INTROSPECTION_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-    });
-
-    // HTTP自体が失敗した場合（ネットワーク障害・Keycloak停止など）
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new OAuthError(
-        OAuthErrorCode.InvalidToken,
-        `Invalid or expired token: ${text}`,
-      );
-    }
-
-    // introspection レスポンスをパース
-    // active=false は「有効なトークンだが失効済み」を意味する
-    const data = (await response.json()) as {
-      active?: boolean;
-      client_id?: string;
-      azp?: string;    // authorized party（client_idの別名）
-      scope?: string;
-      exp?: number;    // Unix timestamp（秒）
-      aud?: string | string[];
-      sub?: string;    // subject（トークンの所有者）
-    };
-
-    // active=false → 失効・無効トークン → 401
-    if (!data.active) {
-      throw new OAuthError(OAuthErrorCode.InvalidToken, "Inactive token");
-    }
-
-    // OAUTH_STRICT=true の場合は Audience 検証も行う
-    // トークンの aud がこのサーバーの URL と互換性があるかチェックする
-    if (OAUTH_STRICT) {
-      if (!data.aud) {
-        throw new OAuthError(
-          OAuthErrorCode.InvalidToken,
-          "Resource indicator (aud) missing",
-        );
-      }
-      const audiences = Array.isArray(data.aud) ? data.aud : [data.aud];
-      const allowed = audiences.some((audience) =>
-        checkResourceAllowed({
-          requestedResource: audience,
-          configuredResource: mcpServerUrl,
-        }),
-      );
-      if (!allowed) {
-        throw new OAuthError(
-          OAuthErrorCode.InvalidToken,
-          `Expected audience compatible with ${mcpServerUrl}, got: ${audiences.join(",")}`,
-        );
-      }
-    }
-
-    // 認証成功時に返す AuthInfo オブジェクトを組み立てる。
-    // requireBearerAuth はこれをリクエストコンテキストに付与する。
-    const authInfo = {
-      token,
-      clientId: data.client_id ?? data.azp ?? "unknown-client",
-      scopes: data.scope ? data.scope.split(" ") : [],
-      // resource は URL 末尾スラッシュなどを正規化したサーバーURL
-      resource: resourceUrlFromServerUrl(mcpServerUrl),
-      extra: {
-        sub: data.sub,
-      },
-    };
-
-    // exp が存在する場合のみ expiresAt を付与（exactOptionalPropertyTypes 対応）
-    if (typeof data.exp === "number") {
-      return { ...authInfo, expiresAt: data.exp };
-    }
-
-    return authInfo;
-  },
-};
+const tokenVerifier = createTokenVerifier(mcpServerUrl);
 
 // GET /.well-known/oauth-protected-resource (PRM) を公開する。
 // MCPクライアントが「このサーバーの認証情報はどこで取得できるか」を自動検出するために使う。
@@ -234,7 +82,7 @@ const authMiddleware = requireBearerAuth({
  */
 function createServer(): McpServer {
   const server = new McpServer({
-    name: "mcp-auth-streamable-http",
+    name: "mcp-auth",
     version: "1.0.0",
   });
 
@@ -361,5 +209,5 @@ app.listen(PORT, () => {
   console.error(
     `PRM endpoint: ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`,
   );
-  console.error(`Introspection endpoint: ${KEYCLOAK_INTROSPECTION_ENDPOINT}`);
+  console.error(`Introspection endpoint: ${oauthMetadata.introspection_endpoint}`);
 });
