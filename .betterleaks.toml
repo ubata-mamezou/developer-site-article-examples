@@ -11,18 +11,22 @@ title = "developer-site-article-examples betterleaks config"
 prefilter = '''
 filter.matchesAny(attributes["path"], [
   `^mcp-auth/keycloak/realm-import/mcp-demo-realm\.json$`,
-  `^mcp-auth/\.env\.example$`
+  `^mcp-auth/\.env\.example$`,
+  `^mcp-auth/\docker-compose\.yml$`
 ])
 '''
 
 # 値単位で除外する場合はこちらを有効化する。
 # ファイル単位で除外しないため、同じファイルに実値を記載した場合も検出できる。
-# filter = '''
-# finding["secret"] in [
+filter = '''
+finding["secret"] in [
+  "bad_format_token",
+  "unknown_token",
+  "dummy1234"
 #   "mcp-server-secret",
 #   "mcp-demo-client-secret",
 #   "mcp-demo-no-scope-client-secret",
 #   "mcp-demo-no-audience-client-secret",
 #   "mcp-demo-diff-audience-client-secret"
-# ]
-# '''
+]
+'''
