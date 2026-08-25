@@ -23,22 +23,34 @@ type PromptOption = {
   query: string;
 };
 
+type InspectionOption = {
+  label: string;
+  content: string;
+};
+
 type ScoredContent = {
   doc: string;
   score: number;
 };
 
 async function main() {
+  const inspectionPath = process.argv[2] ?? "";
+  const documentPath = resolveDocumentPath(process.argv[3]);
+  const promptPath = resolvePromptPath(process.argv[4]);
+
+  // Inspectionファイルの読み込みおよび選択
+  const inspection = inspectionPath
+    ? await selectInspection(await loadInspectionsFromFile(inspectionPath))
+    : "";
+
   // ドキュメントのベクトル化
-  const documentPath = resolveDocumentPath(process.argv[2]);
-  const promptPath = resolvePromptPath(process.argv[3]);
   const documents = await loadDocumentsFromFile(documentPath);
-  const prompts = await loadPromptsFromFile(promptPath);
-  const query = await selectPrompt(prompts);
   const vectorizedDoc: number[][] = await embedAndVectorizedContents(LLM_MODEL_EMBEDDED, documents);
 
   // クエリのベクトル化
-  console.log(`クエリ: "${query}"\n`);
+  const prompts = await loadPromptsFromFile(promptPath);
+  const query = await selectPrompt(prompts);
+  // console.log(`クエリ: "${query}"\n`);
   const vectorizedQuery: number[] = await embedAndVectorizedContent(LLM_MODEL_EMBEDDED, query);
 
   // 類似度計算
@@ -52,15 +64,18 @@ async function main() {
     selectRelevantContents(scoredContents, RETRIEVAL_TOP_N, RELATIVE_SCORE_MARGIN),
   );
 
-  console.log(`ドキュメントファイル: ${documentPath}`);
-  console.log(`プロンプトファイル: ${promptPath}`);
-  console.log(`【検索されたコンテキスト】:\n${retrievedContext}\n`);
+  // console.log(`ドキュメントファイル: ${documentPath}`);
+  // console.log(`プロンプトファイル: ${promptPath}`);
+  // console.log(`【検索されたコンテキスト】:\n${retrievedContext}\n`);
 
   // LLMにコンテキストを渡して回答生成
   const prompt = `
-以下のコンテキスト（背景情報）のみに基づいて回答してください。
+以下のInspectionおよびコンテキストに基づいて回答してください。
 
-コンテキスト:
+Inspection:
+${inspection}
+
+コンテキスト（背景情報）:
 ${retrievedContext}
 
 質問:
@@ -171,6 +186,63 @@ async function selectPrompt(prompts: PromptOption[]): Promise<string> {
 }
 
 /**
+ * Inspectionファイルを空行区切りで読み込む
+ *
+ * @param inspectionPath Inspectionファイルパス
+ * @returns Inspection配列
+ */
+async function loadInspectionsFromFile(inspectionPath: string): Promise<InspectionOption[]> {
+  const inspections = (await readFile(inspectionPath, "utf-8"))
+    .split(/\r?\n\s*\r?\n+/)
+    .map((inspection) => parseInspectionBlock(inspection))
+    .filter((inspection): inspection is InspectionOption => inspection !== "");
+
+  if (inspections.length === 0) {
+    throw new Error(`Inspectionが存在しません: ${inspectionPath}`);
+  }
+
+  return inspections;
+}
+
+/**
+ * Inspection一覧から1件選択する
+ *
+ * @param inspections Inspection配列
+ * @returns 選択されたInspection本文
+ */
+async function selectInspection(inspections: InspectionOption[]): Promise<string> {
+  if (inspections.length === 1) {
+    return inspections[0].content;
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    const inspectionList = inspections
+      .map((inspection, index) => `${index + 1}: ${inspection.label}`)
+      .join("\n");
+
+    while (true) {
+      const answer = await rl.question(
+        `Inspectionを選択してください。\n${inspectionList}\n\n番号を入力してください: `,
+      );
+      const selectedIndex = Number.parseInt(answer.trim(), 10) - 1;
+
+      if (selectedIndex >= 0 && selectedIndex < inspections.length) {
+        return inspections[selectedIndex].content;
+      }
+
+      console.log("無効な番号です。表示された番号を入力してください。\n");
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+/**
  * プロンプトブロックを表示名と本文に分解する
  *
  * 1行目を表示名、2行目以降を本文として扱う。
@@ -197,6 +269,31 @@ function parsePromptBlock(promptBlock: string): PromptOption | "" {
   const [label, ...queryLines] = lines;
   const query = queryLines.length > 0 ? queryLines.join("\n") : label;
   return { label, query };
+}
+
+/**
+ * Inspectionブロックを表示名と本文に分解する
+ *
+ * 表示名は先頭行を使用し、本文はブロック全体をそのまま使用する。
+ *
+ * @param inspectionBlock Inspectionブロック
+ * @returns 表示名と本文
+ */
+function parseInspectionBlock(inspectionBlock: string): InspectionOption | "" {
+  const normalizedBlock = inspectionBlock.trim();
+  if (normalizedBlock.length === 0) {
+    return "";
+  }
+
+  const firstLine = normalizedBlock.split(/\r?\n/)[0]?.trim() ?? "";
+  if (firstLine.length === 0) {
+    return "";
+  }
+
+  return {
+    label: firstLine,
+    content: normalizedBlock,
+  };
 }
 
 /**

@@ -12,8 +12,8 @@
   "scripts": {
     "build": "npm run format && tsc",
     "start": "npm run format && npx tsx src/index.ts",
-    "start:work-rules": "npm run start -- resources/document_work-rules.txt resources/prompt_work-rules.txt",
-    "start:novel": "npm run start -- resources/document_novel.txt resources/prompt_novel.txt",
+    "start:work-rules": "npm run start -- resources/work-rules.inspection.txt resources/work-rules.context.txt resources/work-rules.prompt.txt",
+    "start:novel": "npm run start -- resources/novel.inspection.txt resources/novel.context.txt resources/novel.prompt.txt",
     "format": "biome format --write src/",
     "lint": "biome lint src/",
     "check": "biome check --write src/",
