@@ -50,7 +50,6 @@ async function main() {
   // クエリのベクトル化
   const prompts = await loadPromptsFromFile(promptPath);
   const query = await selectPrompt(prompts);
-  // console.log(`クエリ: "${query}"\n`);
   const vectorizedQuery: number[] = await embedAndVectorizedContent(LLM_MODEL_EMBEDDED, query);
 
   // 類似度計算
@@ -59,14 +58,10 @@ async function main() {
     return { doc, score };
   });
 
-  // Top N と相対閾値のAND条件で関連チャンクを抽出
+  // 類似度検索（関連度の高いドキュメント抽出）
   const retrievedContext = serialSortedContents(
     selectRelevantContents(scoredContents, RETRIEVAL_TOP_N, RELATIVE_SCORE_MARGIN),
   );
-
-  // console.log(`ドキュメントファイル: ${documentPath}`);
-  // console.log(`プロンプトファイル: ${promptPath}`);
-  // console.log(`【検索されたコンテキスト】:\n${retrievedContext}\n`);
 
   // LLMにコンテキストを渡して回答生成
   const prompt = `
@@ -86,6 +81,16 @@ ${query}`;
     contents: prompt,
   });
   console.log(`【LLMの回答】:\n${response.text}`);
+  console.log(`
+    ---debug info---
+embedding model: ${LLM_MODEL_EMBEDDED}
+generated model: ${LLM_MODEL_GENERATED}
+Inspection: ${inspectionPath || "なし"}
+Document: ${documentPath}
+Prompt: ${promptPath}
+Query: ${query}
+Retrieved Context: ${retrievedContext}
+    `);
 }
 
 main().catch(console.error);
@@ -368,7 +373,9 @@ function extractValues(res: EmbedContentResponse): number[] {
 }
 
 /**
- * Top Nと相対閾値のAND条件で関連チャンクを選択する
+ * 類似度検索
+ *
+ * Top Nと相対閾値のAND条件で関連チャンクを選択する。
  *
  * @param scoredContents スコア付きドキュメント配列
  * @param topN 取得する上位件数
@@ -384,11 +391,15 @@ function selectRelevantContents(
     throw new Error("ドキュメントが存在しません");
   }
 
-  const sortedContents = [...scoredContents].sort((a, b) => b.score - a.score);
-  const topContents = sortedContents.slice(0, topN);
-  const topScore = topContents[0].score;
-  const relativeThreshold = topScore - relativeScoreMargin;
-  const filteredContents = topContents.filter((item) => item.score >= relativeThreshold);
+  // const sortedContents = [...scoredContents].sort((a, b) => b.score - a.score);
+  // const topContents = sortedContents.slice(0, topN);
+  // const topScore = topContents[0].score;
+  // const relativeThreshold = topScore - relativeScoreMargin;
+  // const filteredContents = topContents.filter((item) => item.score >= relativeThreshold);
+  const topContents = [...scoredContents].sort((a, b) => b.score - a.score).slice(0, topN);
+  const filteredContents = topContents.filter(
+    (item) => item.score >= topContents[0].score - relativeScoreMargin,
+  );
 
   // 念のため、0件になった場合はtop1を返す。
   if (filteredContents.length === 0) {
