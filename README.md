@@ -14,6 +14,9 @@
 * mcp-server_stdio
   * MCPサーバー（stdio）のサンプルコード
   * 関連記事: [AIエージェントとシステムをつなぐMCP入門（stdio実装編）](https://developer.mamezou-tech.com/blogs/2026/05/08/mcp-impl_stdio/)
+* rag-sample
+  * RAGのサンプルコード
+  * 関連記事: [最小構成のRAGでミステリーを解決させてみた（Gemini + TypeScript）](https://developer.mamezou-tech.com/blogs/2026/09/04/minimum-rag_mystery-novel/)
 * yalc
   * yalcを使ってローカル公開したライブラリを使用するサンプルコード
   * 関連記事: [ライブラリ開発にyalcを活用する](https://developer.mamezou-tech.com/blogs/2026/03/25/dev-lib-efficiently-using-yalc/)

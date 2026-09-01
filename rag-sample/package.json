@@ -1,0 +1,33 @@
+{
+  "name": "rag-sample",
+  "version": "1.0.0",
+  "description": "LLMを使ったサンプル",
+  "keywords": [
+    "llm"
+  ],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "npm run format && tsc",
+    "start": "npm run format && npx tsx src/index.ts",
+    "start:work-rules": "npm run start -- resources/work-rules.inspection.txt resources/work-rules.context.txt resources/work-rules.prompt.txt",
+    "start:novel": "npm run start -- resources/novel.inspection.txt resources/novel.context.txt resources/novel.prompt.txt",
+    "format": "biome format --write src/",
+    "lint": "biome lint src/",
+    "check": "biome check --write src/",
+    "test": "test"
+  },
+  "dependencies": {
+    "@google/genai": "^2.17.1",
+    "dotenv": "^17.4.2",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.9",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
