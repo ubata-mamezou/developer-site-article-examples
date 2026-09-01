@@ -23,7 +23,7 @@ type PromptOption = {
   query: string;
 };
 
-type InspectionOption = {
+type InstructionOption = {
   label: string;
   content: string;
 };
@@ -34,13 +34,13 @@ type ScoredContent = {
 };
 
 async function main() {
-  const inspectionPath = process.argv[2] ?? "";
+  const instructionPath = process.argv[2] ?? "";
   const documentPath = resolveDocumentPath(process.argv[3]);
   const promptPath = resolvePromptPath(process.argv[4]);
 
-  // Inspectionファイルの読み込みおよび選択
-  const inspection = inspectionPath
-    ? await selectInspection(await loadInspectionsFromFile(inspectionPath))
+  // Instructionファイルの読み込みおよび選択
+  const instruction = instructionPath
+    ? await selectInstruction(await loadInstructionsFromFile(instructionPath))
     : "";
 
   // ドキュメントのベクトル化
@@ -59,16 +59,19 @@ async function main() {
   });
 
   // 類似度検索（関連度の高いドキュメント抽出）
-  const retrievedContext = serialSortedContents(
-    selectRelevantContents(scoredContents, RETRIEVAL_TOP_N, RELATIVE_SCORE_MARGIN),
+  const selectedContents = selectRelevantContents(
+    scoredContents,
+    RETRIEVAL_TOP_N,
+    RELATIVE_SCORE_MARGIN,
   );
+  const retrievedContext = serialSortedContents(selectedContents);
 
   // LLMにコンテキストを渡して回答生成
   const prompt = `
-以下のInspectionおよびコンテキストに基づいて回答してください。
+以下のInstructionおよびコンテキストに基づいて回答してください。
 
-Inspection:
-${inspection}
+Instruction:
+${instruction}
 
 コンテキスト（背景情報）:
 ${retrievedContext}
@@ -81,16 +84,14 @@ ${query}`;
     contents: prompt,
   });
   console.log(`【LLMの回答】:\n${response.text}`);
-  console.log(`
-    ---debug info---
-embedding model: ${LLM_MODEL_EMBEDDED}
-generated model: ${LLM_MODEL_GENERATED}
-Inspection: ${inspectionPath || "なし"}
-Document: ${documentPath}
-Prompt: ${promptPath}
-Query: ${query}
-Retrieved Context: ${retrievedContext}
-    `);
+  logRetrievalDebugInfo({
+    documentPath,
+    instructionPath,
+    promptPath,
+    query,
+    scoredContents,
+    selectedContents,
+  });
 }
 
 main().catch(console.error);
@@ -191,33 +192,33 @@ async function selectPrompt(prompts: PromptOption[]): Promise<string> {
 }
 
 /**
- * Inspectionファイルを空行区切りで読み込む
+ * Instructionファイルを空行区切りで読み込む
  *
- * @param inspectionPath Inspectionファイルパス
- * @returns Inspection配列
+ * @param instructionPath Instructionファイルパス
+ * @returns Instruction配列
  */
-async function loadInspectionsFromFile(inspectionPath: string): Promise<InspectionOption[]> {
-  const inspections = (await readFile(inspectionPath, "utf-8"))
+async function loadInstructionsFromFile(instructionPath: string): Promise<InstructionOption[]> {
+  const instructions = (await readFile(instructionPath, "utf-8"))
     .split(/\r?\n\s*\r?\n+/)
-    .map((inspection) => parseInspectionBlock(inspection))
-    .filter((inspection): inspection is InspectionOption => inspection !== "");
+    .map((instruction) => parseInstructionBlock(instruction))
+    .filter((instruction): instruction is InstructionOption => instruction !== "");
 
-  if (inspections.length === 0) {
-    throw new Error(`Inspectionが存在しません: ${inspectionPath}`);
+  if (instructions.length === 0) {
+    throw new Error(`Instructionが存在しません: ${instructionPath}`);
   }
 
-  return inspections;
+  return instructions;
 }
 
 /**
- * Inspection一覧から1件選択する
+ * Instruction一覧から1件選択する
  *
- * @param inspections Inspection配列
- * @returns 選択されたInspection本文
+ * @param instructions Instruction配列
+ * @returns 選択されたInstruction本文
  */
-async function selectInspection(inspections: InspectionOption[]): Promise<string> {
-  if (inspections.length === 1) {
-    return inspections[0].content;
+async function selectInstruction(instructions: InstructionOption[]): Promise<string> {
+  if (instructions.length === 1) {
+    return instructions[0].content;
   }
 
   const rl = readline.createInterface({
@@ -226,18 +227,18 @@ async function selectInspection(inspections: InspectionOption[]): Promise<string
   });
 
   try {
-    const inspectionList = inspections
-      .map((inspection, index) => `${index + 1}: ${inspection.label}`)
+    const instructionList = instructions
+      .map((instruction, index) => `${index + 1}: ${instruction.label}`)
       .join("\n");
 
     while (true) {
       const answer = await rl.question(
-        `Inspectionを選択してください。\n${inspectionList}\n\n番号を入力してください: `,
+        `Instructionを選択してください。\n${instructionList}\n\n番号を入力してください: `,
       );
       const selectedIndex = Number.parseInt(answer.trim(), 10) - 1;
 
-      if (selectedIndex >= 0 && selectedIndex < inspections.length) {
-        return inspections[selectedIndex].content;
+      if (selectedIndex >= 0 && selectedIndex < instructions.length) {
+        return instructions[selectedIndex].content;
       }
 
       console.log("無効な番号です。表示された番号を入力してください。\n");
@@ -277,15 +278,15 @@ function parsePromptBlock(promptBlock: string): PromptOption | "" {
 }
 
 /**
- * Inspectionブロックを表示名と本文に分解する
+ * Instructionブロックを表示名と本文に分解する
  *
  * 表示名は先頭行を使用し、本文はブロック全体をそのまま使用する。
  *
- * @param inspectionBlock Inspectionブロック
+ * @param instructionBlock Instructionブロック
  * @returns 表示名と本文
  */
-function parseInspectionBlock(inspectionBlock: string): InspectionOption | "" {
-  const normalizedBlock = inspectionBlock.trim();
+function parseInstructionBlock(instructionBlock: string): InstructionOption | "" {
+  const normalizedBlock = instructionBlock.trim();
   if (normalizedBlock.length === 0) {
     return "";
   }
@@ -401,14 +402,47 @@ function selectRelevantContents(
     (item) => item.score >= topContents[0].score - relativeScoreMargin,
   );
 
-  // 念のため、0件になった場合はtop1を返す。
-  if (filteredContents.length === 0) {
-    return [topContents[0]];
-  }
-
   return filteredContents;
 }
 
+type RetrievalDebugInfo = {
+  documentPath: string;
+  instructionPath: string;
+  promptPath: string;
+  query: string;
+  scoredContents: ScoredContent[];
+  selectedContents: ScoredContent[];
+};
+
+function logRetrievalDebugInfo({
+  documentPath,
+  instructionPath,
+  promptPath,
+  query,
+  scoredContents,
+  selectedContents,
+}: RetrievalDebugInfo): void {
+  const selectedDocs = new Set(selectedContents.map((content) => content.doc));
+  const scoreLines = [...scoredContents]
+    .sort((a, b) => b.score - a.score)
+    .map(
+      (content, index) =>
+        `${index + 1}. ${content.doc.split(/\r?\n/, 1)[0]}: score=${content.score.toFixed(4)} ${selectedDocs.has(content.doc) ? "selected" : "excluded"}`,
+    );
+
+  console.log(`
+--- debug info ---
+embedding model: ${LLM_MODEL_EMBEDDED}
+generated model: ${LLM_MODEL_GENERATED}
+retrieval: topN=${RETRIEVAL_TOP_N}, top1 score margin=${RELATIVE_SCORE_MARGIN}
+instruction: ${instructionPath || "なし"}
+document: ${documentPath}
+prompt: ${promptPath}
+query: ${query}
+chunk scores:
+${scoreLines.join("\n")}
+`);
+}
 /**
  * 関連チャンクをシリアライズして文字列化する
  *
