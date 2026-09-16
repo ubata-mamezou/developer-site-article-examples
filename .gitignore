@@ -5,3 +5,6 @@ maintenance-tool_*.sh
 
 mcp-schema-versioning
 mcp-agent-bridge/.env
+aws-nx-plugin-sample
+rag-sample_use-fw
+.vscode/mcp.json
