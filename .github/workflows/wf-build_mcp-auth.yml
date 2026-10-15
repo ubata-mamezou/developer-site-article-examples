@@ -1,5 +1,9 @@
 name: mcp-auth CI
 
+permissions:
+  contents: read
+  actions: read
+
 on:
   workflow_dispatch:
   push:
