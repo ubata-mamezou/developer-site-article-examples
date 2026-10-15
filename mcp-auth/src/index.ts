@@ -209,5 +209,5 @@ app.listen(PORT, () => {
   console.error(
     `PRM endpoint: ${getOAuthProtectedResourceMetadataUrl(mcpServerUrl)}`,
   );
-  console.error(`Introspection endpoint: ${oauthMetadata.introspection_endpoint}`);
+  console.error("Introspection endpoint is configured.");
 });
