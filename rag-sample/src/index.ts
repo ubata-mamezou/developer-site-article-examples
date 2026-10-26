@@ -8,8 +8,8 @@ import readline from "node:readline/promises";
 dotenv.config();
 const LLM_MODEL_EMBEDDED = process.env.LLM_MODEL_EMBEDDED ?? "gemini-embedding-2";
 const LLM_MODEL_GENERATED = process.env.LLM_MODEL_GENERATED ?? "gemini-2.5-flash";
-const DEFAULT_DOCUMENT_PATH = "resources/document_work-rules.txt";
-const DEFAULT_PROMPT_PATH = "resources/prompt_work-rules.txt";
+const DEFAULT_DOCUMENT_PATH = "resources/work-rules.context.txt";
+const DEFAULT_PROMPT_PATH = "resources/work-rules.prompt.txt";
 const RETRIEVAL_TOP_N = 2;
 const RELATIVE_SCORE_MARGIN = 0.05;
 if (!process.env.GEMINI_API_KEY) {
@@ -197,7 +197,9 @@ async function selectPrompt(prompts: PromptOption[]): Promise<string> {
  * @param instructionPath Instructionファイルパス
  * @returns Instruction配列
  */
-async function loadInstructionsFromFile(instructionPath: string): Promise<InstructionOption[]> {
+export async function loadInstructionsFromFile(
+  instructionPath: string,
+): Promise<InstructionOption[]> {
   const instructions = (await readFile(instructionPath, "utf-8"))
     .split(/\r?\n\s*\r?\n+/)
     .map((instruction) => parseInstructionBlock(instruction))
@@ -257,7 +259,7 @@ async function selectInstruction(instructions: InstructionOption[]): Promise<str
  * @param promptBlock プロンプトブロック
  * @returns 表示名と本文
  */
-function parsePromptBlock(promptBlock: string): PromptOption | "" {
+export function parsePromptBlock(promptBlock: string): PromptOption | "" {
   const normalizedBlock = promptBlock.trim();
   if (normalizedBlock.length === 0) {
     return "";
@@ -285,7 +287,7 @@ function parsePromptBlock(promptBlock: string): PromptOption | "" {
  * @param instructionBlock Instructionブロック
  * @returns 表示名と本文
  */
-function parseInstructionBlock(instructionBlock: string): InstructionOption | "" {
+export function parseInstructionBlock(instructionBlock: string): InstructionOption | "" {
   const normalizedBlock = instructionBlock.trim();
   if (normalizedBlock.length === 0) {
     return "";
@@ -347,7 +349,7 @@ async function embedAndVectorizedContents(model: string, contents: string[]): Pr
  * @param v2 ベクトル2
  * @returns コサイン類似度 (0〜1)
  */
-function cosineSimilarity(v1: number[], v2: number[]): number {
+export function cosineSimilarity(v1: number[], v2: number[]): number {
   const dotProduct = v1.reduce((sum, a, idx) => sum + a * v2[idx], 0);
   const mag1 = Math.sqrt(v1.reduce((sum, a) => sum + a * a, 0));
   const mag2 = Math.sqrt(v2.reduce((sum, b) => sum + b * b, 0));
@@ -383,7 +385,7 @@ function extractValues(res: EmbedContentResponse): number[] {
  * @param relativeScoreMargin top1からの許容差分
  * @returns 選択されたスコア付きドキュメント配列
  */
-function selectRelevantContents(
+export function selectRelevantContents(
   scoredContents: ScoredContent[],
   topN: number,
   relativeScoreMargin: number,
@@ -449,7 +451,7 @@ ${scoreLines.join("\n")}
  * @param contents スコア付きドキュメント配列
  * @returns シリアライズされた文字列
  */
-function serialSortedContents(contents: ScoredContent[]): string {
+export function serialSortedContents(contents: ScoredContent[]): string {
   return contents
     .map((item, index) => `[Chunk ${index + 1} / score=${item.score.toFixed(4)}]\n${item.doc}`)
     .join("\n\n---\n\n");

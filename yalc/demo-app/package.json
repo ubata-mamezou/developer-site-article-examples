@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "build": "tsc",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "test": "node --test"
   },
   "keywords": [
     "demo",

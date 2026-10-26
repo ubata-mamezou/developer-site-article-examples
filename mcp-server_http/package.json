@@ -13,7 +13,8 @@
     "server_resource": "npm run build && node dist/index.prompt-and-resource.js",
     "sample-api": "npm run build && node dist/sample-web-api.js",
     "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp",
-    "verify_stateful_counter": "npm run build && powershell -ExecutionPolicy Bypass -File ./tools/verify-stateful-counter.ps1"
+    "verify_stateful_counter": "npm run build && powershell -ExecutionPolicy Bypass -File ./tools/verify-stateful-counter.ps1",
+    "test": "npm run build && node --test"
   },
   "keywords": [],
   "author": "",

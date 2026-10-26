@@ -170,7 +170,23 @@ check_unused_overrides() {
 
 # npm outdated と npm audit を実行して、結果をログに出力する関数。
 run_outdated_and_audit_dependencies() {
+  local verification_mode="${1:-test}"
   prepare_install_state
+  if [[ "$verification_mode" == "build-only" ]]; then
+    echo "  [build] npm run build ($(basename "$(pwd)"))" >> "$LOG"
+    if npm run build >> "$LOG" 2>&1; then
+      echo "  [build] passed ($(basename "$(pwd)"))" >> "$LOG"
+    else
+      echo "  [build] FAILED ($(basename "$(pwd)"))" >> "$LOG"
+    fi
+  else
+    echo "  [test] npm test ($(basename "$(pwd)"))" >> "$LOG"
+    if npm test >> "$LOG" 2>&1; then
+      echo "  [test] passed ($(basename "$(pwd)"))" >> "$LOG"
+    else
+      echo "  [test] FAILED ($(basename "$(pwd)"))" >> "$LOG"
+    fi
+  fi
   check_unused_overrides
   if [ "$RUN_MUTATING_STEPS" -eq 1 ]; then
     npm audit fix --registry=https://registry.npmjs.org/
@@ -204,6 +220,11 @@ run_ts_project_with_packages() {
   run_outdated_and_audit_dependencies
 }
 
+run_ts_project_build_only() {
+  install_exact_dependencies "$@"
+  run_outdated_and_audit_dependencies "build-only"
+}
+
 run_online_fw_project() {
   install_exact_dependencies \
     "${NODE24_TYPES_PACKAGES[@]}" \
@@ -235,7 +256,7 @@ run_logged_project "mcp-server_http" "mcp-server_http" run_ts_project_with_packa
 run_logged_project "mcp-server_stdio" "mcp-server_stdio" run_ts_project_with_packages \
   "${NODE26_TYPES_PACKAGES[@]}" \
   zod@^4
-run_logged_project "rag-sample" "rag-sample" run_ts_project_with_packages \
+run_logged_project "rag-sample" "rag-sample" run_ts_project_build_only \
   "${NODE26_TYPES_PACKAGES[@]}"
 run_logged_project "yalc(demo-lib)" "yalc/packages/math-utils" run_ts_project_with_packages \
   "${NODE26_TYPES_PACKAGES[@]}"
@@ -252,3 +273,8 @@ run_logged_project "mcp-agent-bridge" "mcp-agent-bridge" run_ts_project_with_pac
   express@^5
 
 echo "End npm outdated listing..." >> "$LOG"
+
+if grep -Eq "\[(test|build)\] FAILED" "$LOG"; then
+  echo "One or more project verifications failed. See $LOG for details." >&2
+  exit 1
+fi

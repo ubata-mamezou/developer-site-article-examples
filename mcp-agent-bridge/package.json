@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node --env-file-if-exists=.env dist/index.js",
-    "agent": "npm run build && node --env-file-if-exists=.env dist/agent-client.js"
+    "agent": "npm run build && node --env-file-if-exists=.env dist/agent-client.js",
+    "test": "npm run build && node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",

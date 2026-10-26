@@ -35,7 +35,7 @@ yalc publish
 ```bash
 cd ../../demo-app
 npm install
-yalc add @local/math-utils
+yalc add @sample-yalc/math-utils
 npm run dev
 ```
 

@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "npm run build && node dist/index.js",
+    "test": "npm run build && node --test",
     "format": "biome format --write src",
     "lint": "biome check src",
     "lint:fix": "biome check --write src"

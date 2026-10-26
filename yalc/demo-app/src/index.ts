@@ -1,4 +1,4 @@
-import { add, subtract, multiply, divide } from '@local/math-utils';
+import { add, subtract, multiply, divide } from '@sample-yalc/math-utils';
 
 console.log('=== Math Utils Demo ===\n');
 

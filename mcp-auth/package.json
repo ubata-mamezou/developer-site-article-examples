@@ -8,7 +8,8 @@
     "build": "tsc",
     "server": "npm run build && node dist/index.js",
     "client": "npm run build && npx -y @modelcontextprotocol/inspector --transport http --url http://localhost:3000/mcp",
-    "verify:auth-flow": "bash ./tools/verify-auth-flow.sh"
+    "verify:auth-flow": "bash ./tools/verify-auth-flow.sh",
+    "test": "npm run build && node --test"
   },
   "keywords": [
     "mcp",

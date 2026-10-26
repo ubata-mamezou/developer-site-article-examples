@@ -17,7 +17,7 @@
     "format": "biome format --write src/",
     "lint": "biome lint src/",
     "check": "biome check --write src/",
-    "test": "test"
+    "test": "node --import tsx --test"
   },
   "dependencies": {
     "@google/genai": "2.30.0",
