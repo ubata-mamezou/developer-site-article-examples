@@ -225,22 +225,6 @@ run_ts_project_build_only() {
   run_outdated_and_audit_dependencies "build-only"
 }
 
-run_online_fw_project() {
-  install_exact_dependencies \
-    "${NODE24_TYPES_PACKAGES[@]}" \
-    "${PG_TYPES_PACKAGES[@]}" \
-    "${NEST_CORE_PACKAGES_WITHOUT_COMMON[@]}" \
-    "${ONLINE_TEST_FW_PACKAGES[@]}" \
-    "${DOCS_PACKAGES[@]}" \
-    "${TS_LINT_PACKAGES[@]}"
-  if [ "$RUN_MUTATING_STEPS" -eq 1 ]; then
-    npm pkg set "peerDependencies.${NEST_CORE_PEER_PACKAGE}" >> "$LOG"
-  else
-    echo "[SKIP] npm pkg set peerDependencies.${NEST_CORE_PEER_PACKAGE}" >> "$LOG"
-  fi
-  run_outdated_and_audit_dependencies
-}
-
 echo "Starting npm outdated listing..." > "$LOG"
 echo "npm version: $CURRENT_NPM_VERSION (required: >= $REQUIRED_NPM_VERSION)" >> "$LOG"
 echo "safe-chain: npm --min-release-age=$NPM_MIN_RELEASE_AGE_DAYS day(s)" >> "$LOG"
