@@ -8,3 +8,6 @@ aws-nx-plugin-sample
 rag-sample_use-fw
 .vscode/mcp.json
 docs
+!/docs/
+/docs/*
+!/docs/audit-fix.md

@@ -13,6 +13,7 @@ updates:
       - "/mcp-server_http"
       - "/mcp-server_stdio"
       - "/rag-sample"
+      - "/tools"
       - "/yalc/demo-app"
       - "/yalc/packages/math-utils"
     schedule:

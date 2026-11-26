@@ -1,0 +1,9 @@
+{
+  "name": "audit-fix-test-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node -e \"\"",
+    "test": "node --test"
+  }
+}

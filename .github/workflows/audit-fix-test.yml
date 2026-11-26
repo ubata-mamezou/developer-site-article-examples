@@ -1,0 +1,21 @@
+name: npm audit fix test run
+
+on:
+  workflow_dispatch:
+    inputs:
+      node-version:
+        description: 使用するNode.jsのバージョン
+        required: true
+        default: "26"
+        type: string
+
+permissions: {}
+
+jobs:
+  test-run:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/audit-fix-reusable.yml
+    with:
+      node-version: ${{ inputs.node-version }}
+      test-run: true
