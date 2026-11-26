@@ -6,7 +6,15 @@
 version: 2
 updates:
   - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/" # Location of package manifests
+    directories:
+      - "/consider_extend-relation"
+      - "/mcp-agent-bridge"
+      - "/mcp-auth"
+      - "/mcp-server_http"
+      - "/mcp-server_stdio"
+      - "/rag-sample"
+      - "/yalc/demo-app"
+      - "/yalc/packages/math-utils"
     schedule:
       interval: "weekly"
     cooldown:

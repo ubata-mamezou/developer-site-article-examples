@@ -9,13 +9,13 @@ on:
   push:
     paths:
       - "mcp-auth/**"
-      - ".github/workflows/mcp-auth.yml"
+      - ".github/workflows/wf-build_mcp-auth.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
   pull_request:
     paths:
       - "mcp-auth/**"
-      - ".github/workflows/mcp-auth.yml"
+      - ".github/workflows/wf-build_mcp-auth.yml"
       - ".betterleaks.toml"
       - ".betterleaksignore"
 
