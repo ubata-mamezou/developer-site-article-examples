@@ -18,6 +18,21 @@ on:
         required: true
         default: false
         type: boolean
+      branch-prefix:
+        description: 作成するブランチ名のprefix（公開リポジトリでは公開されます）
+        required: true
+        default: automation/audit-fix
+        type: string
+      auto-minor:
+        description: マイナー更新を自動対応する
+        required: true
+        default: true
+        type: boolean
+      auto-patch:
+        description: パッチ更新を自動対応する
+        required: true
+        default: true
+        type: boolean
 
 permissions: {}
 
@@ -25,8 +40,12 @@ jobs:
   audit-fix:
     permissions:
       contents: write
-    uses: ./.github/workflows/audit-fix-reusable.yml
+      issues: write
+    uses: ./.github/workflows/_audit-fix.yml
     with:
       project: ${{ inputs.project }}
       node-version: ${{ inputs.node-version }}
       test-run: ${{ inputs.test-run }}
+      branch-prefix: ${{ inputs.branch-prefix }}
+      auto-minor: ${{ inputs.auto-minor }}
+      auto-patch: ${{ inputs.auto-patch }}

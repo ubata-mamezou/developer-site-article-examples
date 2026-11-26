@@ -1,0 +1,79 @@
+name: npm audit fix publish
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: true
+        type: string
+      node-version:
+        required: true
+        type: string
+      test-run:
+        required: true
+        type: boolean
+      branch-prefix:
+        required: true
+        type: string
+      auto-minor:
+        required: true
+        type: boolean
+      auto-patch:
+        required: true
+        type: boolean
+
+permissions: {}
+
+jobs:
+  publish:
+    name: 専用ブランチへ反映
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: ベースコミットを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - name: Node.jsを準備
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+      - name: 差分を取得
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: audit-fix-patch
+          path: ${{ runner.temp }}/audit-fix
+      - name: 差分を検証
+        env:
+          PROJECT: ${{ inputs.project }}
+          AUTO_MINOR: ${{ inputs.auto-minor }}
+          AUTO_PATCH: ${{ inputs.auto-patch }}
+        run: node tools/src/audit-fix.ts apply "$PROJECT" "$RUNNER_TEMP/audit-fix/audit-fix.patch"
+      - name: コミットを作成
+        id: candidate
+        env:
+          TEST_RUN: ${{ inputs.test-run }}
+          BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        run: |
+          set -eu
+          if [ "$TEST_RUN" = "true" ]; then
+            branch="${BRANCH_PREFIX}-test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            message="test: simulate npm audit fix"
+          else
+            branch="${BRANCH_PREFIX}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            message="fix: remediate npm vulnerabilities"
+          fi
+          git check-ref-format --branch "$branch" >/dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u
+          git commit -m "$message" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+      - name: 専用ブランチを作成
+        uses: ./.github/actions/create-branch
+        with:
+          branch: ${{ steps.candidate.outputs.branch }}
+          base-branch: ${{ github.event.repository.default_branch }}
+          base-sha: ${{ github.sha }}

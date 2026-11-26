@@ -1,0 +1,48 @@
+name: Create and push a branch
+description: Push the current commit to a new branch after verifying the base branch.
+inputs:
+  branch:
+    description: New branch name
+    required: true
+  base-branch:
+    description: Base branch to check before pushing
+    required: true
+  base-sha:
+    description: Expected base commit
+    required: true
+outputs:
+  branch:
+    description: Created branch name
+    value: ${{ steps.push.outputs.branch }}
+runs:
+  using: composite
+  steps:
+    - name: ベースとブランチを確認してpush
+      id: push
+      shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+        BASE_SHA: ${{ inputs.base-sha }}
+      run: |
+        set -eu
+        git check-ref-format --branch "$BRANCH" >/dev/null
+        git check-ref-format "refs/heads/$BASE_BRANCH" >/dev/null
+        current_sha="$(git ls-remote origin "refs/heads/$BASE_BRANCH" | cut -f1)"
+        if [ "$current_sha" != "$BASE_SHA" ]; then
+          echo "ベースブランチが更新されたため中止します。" >&2
+          exit 1
+        fi
+        if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null; then
+          echo "作成先ブランチが既に存在するため中止します。" >&2
+          exit 1
+        else
+          status=$?
+          if [ "$status" -ne 2 ]; then
+            echo "作成先ブランチを確認できませんでした。" >&2
+            exit "$status"
+          fi
+        fi
+        git push origin "HEAD:refs/heads/$BRANCH"
+        echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+        echo "作成したブランチ: $BRANCH"

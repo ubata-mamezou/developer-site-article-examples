@@ -1,0 +1,160 @@
+name: npm audit fix reusable
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: false
+        default: mcp-auth
+        type: string
+      node-version:
+        required: false
+        default: "26"
+        type: string
+      test-run:
+        required: false
+        default: false
+        type: boolean
+      branch-prefix:
+        required: false
+        default: automation/audit-fix
+        type: string
+      auto-minor:
+        required: false
+        default: true
+        type: boolean
+      auto-patch:
+        required: false
+        default: true
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: audit-fix-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: 修正と検証
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.repair.outputs.changed }}
+      issues: ${{ steps.issues.outputs.issues }}
+    steps:
+      - name: ベースブランチを確認
+        env:
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+            echo "既定ブランチから実行してください。" >&2
+            exit 1
+          fi
+      - name: ベースコミットを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.jsを準備
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+      - name: ツールの型チェックとテスト
+        run: |
+          npm ci --prefix tools --ignore-scripts --no-audit --no-fund
+          npm run typecheck --prefix tools
+          npm test --prefix tools
+      - name: 模擬npmを準備
+        if: inputs.test-run
+        run: |
+          node tools/src/mock-npm-setup.ts "$RUNNER_TEMP/audit-fix-mock-bin"
+          echo "$RUNNER_TEMP/audit-fix-mock-bin" >> "$GITHUB_PATH"
+          echo "テスト実行: 指定projectを無視し、専用フィクスチャを使用します。"
+      - name: 脆弱性とoutdatedの候補を作成
+        id: issues
+        if: ${{ !inputs.test-run }}
+        env:
+          PROJECT: ${{ inputs.project }}
+          NPM_CONFIG_MIN_RELEASE_AGE: "7"
+          NPM_CONFIG_FORCE: "false"
+          NPM_CONFIG_AUDIT_LEVEL: "info"
+          AUTO_MINOR: ${{ inputs.auto-minor }}
+          AUTO_PATCH: ${{ inputs.auto-patch }}
+        run: node tools/src/npm-inspect.ts "$PROJECT" "$RUNNER_TEMP/audit-issues.json" "$RUNNER_TEMP/outdated-plan.json"
+      - name: テスト用の空の更新候補を準備
+        if: inputs.test-run
+        run: echo '[]' > "$RUNNER_TEMP/outdated-plan.json"
+      - name: Issue候補を保存
+        if: steps.issues.outputs.issues == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audit-issues
+          path: ${{ runner.temp }}/audit-issues.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: 修正・ビルド・テスト・再監査
+        id: repair
+        env:
+          PROJECT: ${{ inputs.test-run && 'tools/fixtures/audit-fix' || inputs.project }}
+          NPM_CONFIG_MIN_RELEASE_AGE: "7"
+          NPM_CONFIG_FORCE: "false"
+          NPM_CONFIG_AUDIT_LEVEL: "info"
+          AUTO_MINOR: ${{ inputs.auto-minor }}
+          AUTO_PATCH: ${{ inputs.auto-patch }}
+        run: node tools/src/audit-fix.ts prepare "$PROJECT" "$RUNNER_TEMP/audit-fix.patch" "$RUNNER_TEMP/outdated-plan.json"
+      - name: 差分を保存
+        if: steps.repair.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audit-fix-patch
+          path: ${{ runner.temp }}/audit-fix.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: 専用ブランチへ反映
+    needs: repair
+    if: needs.repair.result == 'success' && needs.repair.outputs.changed == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_audit-fix-publish.yml
+    with:
+      project: ${{ inputs.test-run && 'tools/fixtures/audit-fix' || inputs.project }}
+      node-version: ${{ inputs.node-version }}
+      test-run: ${{ inputs.test-run }}
+      branch-prefix: ${{ inputs.branch-prefix }}
+      auto-minor: ${{ inputs.auto-minor }}
+      auto-patch: ${{ inputs.auto-patch }}
+
+  issues:
+    name: 対応が必要な依存関係を追跡
+    needs: repair
+    if: ${{ !cancelled() && !inputs.test-run && needs.repair.outputs.issues == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: ベースコミットを取得
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node.jsを準備
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+      - name: Issue候補を取得
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: audit-issues
+          path: ${{ runner.temp }}/audit-issues
+      - name: Issueを作成
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/src/issue-publisher.ts "$RUNNER_TEMP/audit-issues/audit-issues.json"

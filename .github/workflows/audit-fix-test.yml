@@ -15,7 +15,8 @@ jobs:
   test-run:
     permissions:
       contents: write
-    uses: ./.github/workflows/audit-fix-reusable.yml
+      issues: write
+    uses: ./.github/workflows/_audit-fix.yml
     with:
       node-version: ${{ inputs.node-version }}
       test-run: true
